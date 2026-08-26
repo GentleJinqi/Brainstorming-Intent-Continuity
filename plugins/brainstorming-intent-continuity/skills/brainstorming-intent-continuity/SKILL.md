@@ -124,7 +124,7 @@ python3 "${BIC_SKILL_DIR}/scripts/bic.py" apply \
 
 For a new lineage omit `--record-id` and use expected revision `0`; for an
 update provide the stable ID and current revision. Run
-`"${BIC_SKILL_DIR}/scripts/bic.py" validate --project PROJECT` after apply. A
+`python3 "${BIC_SKILL_DIR}/scripts/bic.py" validate --project PROJECT` after apply. A
 revision mismatch fails closed: re-read authority, never last-write-wins or
 invent a replacement.
 
@@ -139,13 +139,13 @@ On first creation, add the exact current/history paths once. On later updates,
 do not repeat paths or restate the record unless asked or preparing a handoff.
 
 Bind only the exact session, project, record, and revision with
-`"${BIC_SKILL_DIR}/scripts/bic.py" bind` using plugin data outside the
+`python3 "${BIC_SKILL_DIR}/scripts/bic.py" bind` using plugin data outside the
 project; look it up read-only before recovery. Use
-`"${BIC_SKILL_DIR}/scripts/bic.py" commit-snapshot` only with explicit
+`python3 "${BIC_SKILL_DIR}/scripts/bic.py" commit-snapshot` only with explicit
 authority to commit the manifest plus every registered lineage's
 current/history files as one complete BIC registry snapshot. It is never
 record-scoped. Otherwise `commit_pending` is the complete result.
-Run `"${BIC_SKILL_DIR}/scripts/bic.py" COMMAND --help` for flags; the
+Run `python3 "${BIC_SKILL_DIR}/scripts/bic.py" COMMAND --help` for flags; the
 record-format reference owns the contract.
 
 ## Recover, degrade, and hand off honestly

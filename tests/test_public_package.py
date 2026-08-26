@@ -125,6 +125,21 @@ class PublicPackageContractTestCase(unittest.TestCase):
         self.assertIn("BIC 不得覆盖该权威", normalized_chinese)
         self.assertIn("若该权威禁止记录或写入，则不得 apply", normalized_chinese)
 
+    def test_skill_commands_invoke_bic_with_python3(self):
+        skill = (
+            PLUGIN_ROOT
+            / "skills"
+            / "brainstorming-intent-continuity"
+            / "SKILL.md"
+        ).read_text(encoding="utf-8")
+        script_path = '"${BIC_SKILL_DIR}/scripts/bic.py"'
+        command_lines = [line for line in skill.splitlines() if script_path in line]
+
+        self.assertTrue(command_lines)
+        for line in command_lines:
+            with self.subTest(line=line):
+                self.assertIn(f"python3 {script_path}", line)
+
 
 if __name__ == "__main__":
     unittest.main()

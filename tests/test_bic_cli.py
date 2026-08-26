@@ -854,6 +854,113 @@ class BicCliTestCase(unittest.TestCase):
                 self.assertEqual(payload["state"], "invalid_bindings")
                 self.assertNotIn("Traceback", result.stderr)
 
+    def assert_binding_lookup_failure(self, plugin_data, expected_state):
+        result = self.run_cli(
+            "bind",
+            "--plugin-data",
+            plugin_data,
+            "--session-id",
+            "session-1",
+            "--lookup",
+        )
+
+        self.assertEqual(result.returncode, 2, result.stderr)
+        output_lines = result.stdout.strip().splitlines()
+        self.assertEqual(len(output_lines), 1)
+        payload = json.loads(output_lines[0])
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["state"], expected_state)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_binding_lookup_rejects_invalid_binding_envelopes(self):
+        plugin_data = self.root / "plugin-data"
+        plugin_data.mkdir()
+        binding_file = plugin_data / "session-bindings.json"
+
+        for label, bindings in (
+            ("array", []),
+            ("null", None),
+            ("string", "not-an-object"),
+            ("invalid_utf8", b"\xff"),
+            ("boolean_schema_version", {"schema_version": True, "sessions": {}}),
+            ("float_schema_version", {"schema_version": 1.0, "sessions": {}}),
+        ):
+            with self.subTest(label=label):
+                if isinstance(bindings, bytes):
+                    binding_file.write_bytes(bindings)
+                else:
+                    binding_file.write_text(json.dumps(bindings), encoding="utf-8")
+
+                self.assert_binding_lookup_failure(plugin_data, "invalid_bindings")
+
+    def test_binding_lookup_distinguishes_missing_and_null_session_entries(self):
+        plugin_data = self.root / "plugin-data"
+        plugin_data.mkdir()
+        binding_file = plugin_data / "session-bindings.json"
+
+        for label, sessions, expected_state in (
+            ("missing", {}, "unbound_session"),
+            ("null", {"session-1": None}, "invalid_bindings"),
+        ):
+            with self.subTest(label=label):
+                binding_file.write_text(
+                    json.dumps({"schema_version": 1, "sessions": sessions}),
+                    encoding="utf-8",
+                )
+
+                self.assert_binding_lookup_failure(plugin_data, expected_state)
+
+    def test_binding_lookup_rejects_unsafe_or_noncanonical_project_paths(self):
+        plugin_data = self.root / "plugin-data"
+        plugin_data.mkdir()
+        binding_file = plugin_data / "session-bindings.json"
+        binding = {
+            "project": str(self.project),
+            "record_id": "BIC-0001",
+            "revision": 1,
+            "current_path": str(self.project / "current.md"),
+            "history_path": str(self.project / "history.md"),
+        }
+
+        for label, project in (
+            ("nul", "\x00"),
+            ("unpaired_surrogate", "\ud800"),
+            ("overlong", "/" + "x" * 5000),
+            ("relative", "project"),
+            ("noncanonical", f"{self.project}/../{self.project.name}"),
+        ):
+            with self.subTest(label=label):
+                malformed = dict(binding)
+                malformed["project"] = project
+                binding_file.write_text(
+                    json.dumps(
+                        {"schema_version": 1, "sessions": {"session-1": malformed}}
+                    ),
+                    encoding="utf-8",
+                )
+
+                self.assert_binding_lookup_failure(plugin_data, "invalid_bindings")
+
+    def test_binding_lookup_rejects_project_symlink_cycle(self):
+        plugin_data = self.root / "plugin-data"
+        plugin_data.mkdir()
+        binding_file = plugin_data / "session-bindings.json"
+        cycle = self.root / "project-cycle"
+        cycle.symlink_to(cycle)
+        binding = {
+            "project": str(cycle),
+            "record_id": "BIC-0001",
+            "revision": 1,
+            "current_path": str(self.project / "current.md"),
+            "history_path": str(self.project / "history.md"),
+        }
+        binding_file.write_text(
+            json.dumps({"schema_version": 1, "sessions": {"session-1": binding}}),
+            encoding="utf-8",
+        )
+
+        self.assert_binding_lookup_failure(plugin_data, "invalid_bindings")
+
     def test_binding_lookup_fails_closed_when_record_revision_is_stale(self):
         self.assert_success(self.apply())
         plugin_data = self.root / "plugin-data"

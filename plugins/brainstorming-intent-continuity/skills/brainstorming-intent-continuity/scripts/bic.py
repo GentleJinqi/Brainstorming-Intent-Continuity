@@ -278,11 +278,15 @@ def load_bindings(plugin_data):
         return {"schema_version": 1, "sessions": {}}
     try:
         bindings = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise BicError("invalid_bindings", f"cannot read session bindings: {error}")
-    if bindings.get("schema_version") != 1 or not isinstance(
-        bindings.get("sessions"), dict
-    ):
+    if not isinstance(bindings, dict):
+        raise BicError("invalid_bindings", "session bindings must be an object")
+    if type(bindings.get("schema_version")) is not int or bindings.get(
+        "schema_version"
+    ) != 1:
+        raise BicError("invalid_bindings", "unsupported session binding format")
+    if not isinstance(bindings.get("sessions"), dict):
         raise BicError("invalid_bindings", "unsupported session binding format")
     return bindings
 
@@ -300,6 +304,27 @@ def validate_binding_entry(binding):
         raise BicError(
             "invalid_bindings", "session binding revision must be a positive integer"
         )
+
+
+def resolve_binding_project(project_text):
+    try:
+        raw_project = Path(project_text)
+        if not raw_project.is_absolute():
+            raise BicError(
+                "invalid_bindings",
+                "session binding project must be an absolute canonical path",
+            )
+        project = raw_project.resolve()
+        if project_text != str(project):
+            raise BicError(
+                "invalid_bindings",
+                "session binding project must be an absolute canonical path",
+            )
+        return project, project.is_dir()
+    except BicError:
+        raise
+    except (OSError, RuntimeError, UnicodeError, ValueError) as error:
+        raise BicError("invalid_bindings", f"invalid session binding project: {error}")
 
 
 def binding_payload(binding):
@@ -451,20 +476,21 @@ def command_bind(arguments):
     plugin_data = Path(arguments.plugin_data).resolve()
     if arguments.lookup:
         bindings = load_bindings(plugin_data)
-        binding = bindings["sessions"].get(arguments.session_id)
-        if binding is None:
+        sessions = bindings["sessions"]
+        if arguments.session_id not in sessions:
             raise BicError("unbound_session", "session has no BIC binding")
+        binding = sessions[arguments.session_id]
         if not isinstance(binding, dict):
             raise BicError(
                 "invalid_bindings", "session binding entry must be an object"
             )
         validate_binding_entry(binding)
-        project = Path(binding["project"]).resolve()
+        project, project_is_dir = resolve_binding_project(binding["project"])
         if is_within(plugin_data, project):
             raise BicError(
                 "invalid_plugin_data", "plugin data must be outside the project"
             )
-        if not project.is_dir():
+        if not project_is_dir:
             raise BicError("stale_binding", "bound project no longer exists")
         try:
             manifest = load_manifest(project)

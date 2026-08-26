@@ -11,8 +11,8 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 - Return exact current/history paths from `apply` and record-scoped `validate`
   so a new lineage can supply its promised handoff pointer without guessing.
-- Reject malformed per-session binding entries through the JSON fail-closed
-  path instead of leaking a Python traceback.
+- Reject malformed session binding files and entries through the JSON
+  fail-closed path instead of leaking a Python traceback.
 - Include the required project argument in the Skill's post-apply validation
   command.
 - Reconcile controlled bootstrap reconstructions to applicable native project

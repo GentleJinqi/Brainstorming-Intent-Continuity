@@ -83,8 +83,11 @@ For a new lineage, omit `--record-id` and require expected revision 0. For an
 update, provide its stable ID and current revision. A mismatch fails closed
 without changing project state. `apply` atomically replaces each record file,
 then the manifest last. A successful apply records and reports
-`commit_pending`; it never invokes Git. This is the no-commit path when project
-authority forbids a commit. Record IDs are limited to the four-digit range
+`commit_pending` together with the record ID, revision, and absolute
+current/history paths; it never invokes Git. A record-scoped successful
+`validate` reports the same exact pointer after checking the persisted record.
+This is the no-commit path when project authority forbids a commit. Record IDs
+are limited to the four-digit range
 `BIC-0001` through `BIC-9999`; a valid exhausted registry uses
 `next_record_number: 10000`, and a new-record apply returns
 `record_id_exhausted` before reading drafts or writing project state.

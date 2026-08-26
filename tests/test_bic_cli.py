@@ -187,6 +187,20 @@ class BicCliTestCase(unittest.TestCase):
         self.assertNotIn("{{RECORD_ID}}", current + history)
         self.assertNotIn("{{REVISION}}", current + history)
 
+    def test_apply_returns_the_exact_handoff_pointer(self):
+        payload = self.assert_success(self.apply())
+        record_directory = (
+            self.project.resolve()
+            / ".brainstorming-intent"
+            / "records"
+            / "BIC-0001"
+        )
+
+        self.assertEqual(payload["record_id"], "BIC-0001")
+        self.assertEqual(payload["revision"], 1)
+        self.assertEqual(payload.get("current_path"), str(record_directory / "current.md"))
+        self.assertEqual(payload.get("history_path"), str(record_directory / "history.md"))
+
     def test_apply_rejects_a_missing_required_section_without_creating_state(self):
         self.current_draft.write_text(
             CURRENT_DRAFT.replace("## Explicit prohibitions", "## Other notes"),
@@ -762,6 +776,36 @@ class BicCliTestCase(unittest.TestCase):
         self.assertEqual(looked_up["revision"], 1)
         self.assertEqual(looked_up["project"], str(self.project.resolve()))
 
+    def test_binding_lookup_fails_closed_when_the_session_entry_is_not_an_object(self):
+        plugin_data = self.root / "plugin-data"
+        plugin_data.mkdir()
+        (plugin_data / "session-bindings.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "sessions": {"session-1": "not-an-object"},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = self.run_cli(
+            "bind",
+            "--plugin-data",
+            plugin_data,
+            "--session-id",
+            "session-1",
+            "--lookup",
+        )
+
+        self.assertEqual(result.returncode, 2, result.stderr)
+        output_lines = result.stdout.strip().splitlines()
+        self.assertEqual(len(output_lines), 1)
+        payload = json.loads(output_lines[0])
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["state"], "invalid_bindings")
+        self.assertNotIn("Traceback", result.stderr)
+
     def test_binding_lookup_fails_closed_when_record_revision_is_stale(self):
         self.assert_success(self.apply())
         plugin_data = self.root / "plugin-data"
@@ -997,6 +1041,30 @@ class BicCliTestCase(unittest.TestCase):
             if path.is_file()
         }
         self.assertEqual(after, before)
+
+    def test_record_scoped_validate_returns_the_exact_handoff_pointer(self):
+        self.assert_success(self.apply())
+        record_directory = (
+            self.project.resolve()
+            / ".brainstorming-intent"
+            / "records"
+            / "BIC-0001"
+        )
+
+        payload = self.assert_success(
+            self.run_cli(
+                "validate",
+                "--project",
+                self.project,
+                "--record-id",
+                "BIC-0001",
+            )
+        )
+
+        self.assertEqual(payload.get("record_id"), "BIC-0001")
+        self.assertEqual(payload.get("revision"), 1)
+        self.assertEqual(payload.get("current_path"), str(record_directory / "current.md"))
+        self.assertEqual(payload.get("history_path"), str(record_directory / "history.md"))
 
 
 if __name__ == "__main__":

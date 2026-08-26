@@ -39,6 +39,14 @@ prompt mention is not activation evidence:
   turn. Do not backfill pre-activation or partial-turn content unless the user
   explicitly confirms a brief controlled bootstrap reconstruction.
 
+Before presenting a controlled bootstrap reconstruction, inspect any applicable
+native project authority and reconcile the reconstruction to it. Native
+authority controls project state, source routing, lifecycle, evidence,
+permissions and write eligibility, and handoff ownership over recovered Task
+history and BIC defaults; BIC never overrides it. Do not apply where that
+authority forbids the record or write; obtain user confirmation only after
+reconciliation.
+
 Arming itself writes nothing. Superpowers Brainstorming alone is intentional
 no-continuity mode. Do not arm from a quoted Skill name, a negated request,
 fenced/pasted documentation, or a prompt-string match.
@@ -116,8 +124,9 @@ python3 "${BIC_SKILL_DIR}/scripts/bic.py" apply \
 
 For a new lineage omit `--record-id` and use expected revision `0`; for an
 update provide the stable ID and current revision. Run
-`"${BIC_SKILL_DIR}/scripts/bic.py" validate` after apply. A revision mismatch
-fails closed: re-read authority, never last-write-wins or invent a replacement.
+`"${BIC_SKILL_DIR}/scripts/bic.py" validate --project PROJECT` after apply. A
+revision mismatch fails closed: re-read authority, never last-write-wins or
+invent a replacement.
 
 After a successful apply and validation, use this compact visible receipt in
 the user's language:

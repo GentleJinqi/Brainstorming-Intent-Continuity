@@ -127,6 +127,14 @@ from an older task or the partial turn, first present a brief controlled
 bootstrap reconstruction and apply it only after the user explicitly confirms
 it; never treat task history as an automatic backfill source.
 
+Before presenting that controlled bootstrap reconstruction, inspect any
+applicable native project authority and reconcile the reconstruction to it.
+Native authority controls project state, source routing, lifecycle, evidence,
+permissions and write eligibility, and handoff ownership over recovered Task
+history and BIC defaults; BIC never overrides it. Do not apply where that
+authority forbids the record or write; obtain user confirmation only after
+reconciliation.
+
 Once per continuous root discussion is enough. Repeating the pair within that
 discussion resumes the same armed candidate or exact record; it must not create
 a duplicate intent record.
@@ -355,10 +363,14 @@ or inaccurate.
 
 ## Compatibility
 
-Version `0.1.3` has been verified on Linux with Superpowers `6.3.0` and Codex
+Version `0.1.4` has been verified on Linux with Superpowers `6.3.0` and Codex
 CLI `0.149.1`. The deterministic writer requires Python `3.9+` and POSIX file
 locking. Native Windows is not currently supported; macOS has not yet been
 verified.
+
+See [CHANGELOG.md](CHANGELOG.md) for release notes and
+[GitHub Releases](https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/releases)
+for published versions.
 
 Superpowers is an independent dependency and is not included in this
 repository. Future Superpowers or Codex changes may require a compatibility

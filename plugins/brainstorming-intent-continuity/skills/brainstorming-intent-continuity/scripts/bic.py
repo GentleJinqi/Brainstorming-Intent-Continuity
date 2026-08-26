@@ -404,6 +404,8 @@ def command_apply(arguments):
         "state": "commit_pending",
         "record_id": record_id,
         "revision": revision,
+        "current_path": str(record_directory / "current.md"),
+        "history_path": str(record_directory / "history.md"),
     }
 
 
@@ -415,7 +417,19 @@ def command_validate(arguments):
     record_ids = [arguments.record_id] if arguments.record_id else sorted(manifest["records"])
     for record_id in record_ids:
         validate_record(project, manifest, record_id)
-    return {"ok": True, "state": "valid", "records": record_ids}
+    payload = {"ok": True, "state": "valid", "records": record_ids}
+    if arguments.record_id:
+        record_id = arguments.record_id
+        record_directory = project / STATE_DIRECTORY / "records" / record_id
+        payload.update(
+            {
+                "record_id": record_id,
+                "revision": manifest["records"][record_id]["revision"],
+                "current_path": str(record_directory / "current.md"),
+                "history_path": str(record_directory / "history.md"),
+            }
+        )
+    return payload
 
 
 def command_bind(arguments):
@@ -425,6 +439,10 @@ def command_bind(arguments):
         binding = bindings["sessions"].get(arguments.session_id)
         if binding is None:
             raise BicError("unbound_session", "session has no BIC binding")
+        if not isinstance(binding, dict):
+            raise BicError(
+                "invalid_bindings", "session binding entry must be an object"
+            )
         project = Path(binding.get("project", "")).resolve()
         if is_within(plugin_data, project):
             raise BicError(

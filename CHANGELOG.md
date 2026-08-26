@@ -5,6 +5,20 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-08-26
+
+### Fixed
+
+- Return exact current/history paths from `apply` and record-scoped `validate`
+  so a new lineage can supply its promised handoff pointer without guessing.
+- Reject malformed per-session binding entries through the JSON fail-closed
+  path instead of leaking a Python traceback.
+- Include the required project argument in the Skill's post-apply validation
+  command.
+- Reconcile controlled bootstrap reconstructions to applicable native project
+  authority, which takes precedence over recovered Task history and BIC
+  defaults and can forbid a record or write.
+
 ## [0.1.3] - 2026-08-26
 
 ### Fixed
@@ -41,7 +55,8 @@ The project follows [Semantic Versioning](https://semver.org/).
   review.
 - A GitHub repository marketplace package and 19 deterministic writer tests.
 
-[Unreleased]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/releases/tag/v0.1.1

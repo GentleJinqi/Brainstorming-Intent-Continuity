@@ -115,6 +115,10 @@ partial activation 所在的 turn 会在 fail-closed 回执后立即结束。缺
 给出一份简短的 controlled bootstrap 重建，并且只有在用户明确确认后才能写入；不得把任务
 历史自动当成回填来源。
 
+在呈现这份 controlled bootstrap 重建前，先检查适用的原生项目权威，并将重建内容与其协调一致。
+原生权威优先决定项目状态、来源路由、生命周期、证据、权限和写入资格，以及 recovered
+Task history 与 BIC 默认值之上的 handoff ownership；BIC 不得覆盖该权威。若该权威禁止记录或写入，则不得 apply；只能在完成协调后再取得用户确认。
+
 每段连续的根讨论调用一次即可。同一轮讨论中重复调用时，应继续使用已经 armed 的候选意图
 或现有 record，而不是创建重复记录。
 
@@ -318,9 +322,12 @@ Markdown 权威。
 
 ## 兼容性
 
-版本 `0.1.3` 已在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI
+版本 `0.1.4` 已在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI
 `0.149.1` 完成验证。确定性 writer 需要 Python `3.9+` 和 POSIX 文件锁。当前不支持
 原生 Windows；macOS 尚未经过实际验证。
+
+发布说明请见 [CHANGELOG.md](CHANGELOG.md)，已发布版本请见
+[GitHub Releases](https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/releases)。
 
 Superpowers 是独立依赖，不包含在本仓库内。Superpowers 或 Codex 后续发生变化时，在声明
 支持前可能需要重新进行兼容性审核。

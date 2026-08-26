@@ -93,8 +93,11 @@ Skill：
 
 ```text
 $superpowers:brainstorming
-$brainstorming-intent-continuity
+$brainstorming-intent-continuity:brainstorming-intent-continuity
 ```
+
+Codex 会把插件提供的 Skill 命名为 `plugin-name:skill-name`。本插件的插件名和
+Skill 名都是 `brainstorming-intent-continuity`，因此这里的重复是有意的。
 
 预期确认信息为：
 
@@ -297,7 +300,7 @@ Markdown 权威。
 
 ## 兼容性
 
-版本 `0.1.1` 已在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI
+版本 `0.1.2` 已在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI
 `0.149.1` 完成验证。确定性 writer 需要 Python `3.9+` 和 POSIX 文件锁。当前不支持
 原生 Windows；macOS 尚未经过实际验证。
 

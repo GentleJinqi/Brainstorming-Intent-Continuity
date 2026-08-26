@@ -5,6 +5,14 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-26
+
+### Fixed
+
+- Use the plugin-qualified Skill invocation required by Codex so explicit BIC
+  activation loads the installed Skill instead of leaving the bare name as
+  ordinary prompt text.
+
 ## [0.1.1] - 2026-08-26
 
 ### Added
@@ -19,5 +27,6 @@ The project follows [Semantic Versioning](https://semver.org/).
   review.
 - A GitHub repository marketplace package and 19 deterministic writer tests.
 
-[Unreleased]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/releases/tag/v0.1.1

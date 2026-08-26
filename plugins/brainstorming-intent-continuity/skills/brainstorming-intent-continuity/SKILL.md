@@ -17,7 +17,7 @@ explicitly restarted:
 
 ```text
 $superpowers:brainstorming
-$brainstorming-intent-continuity
+$brainstorming-intent-continuity:brainstorming-intent-continuity
 ```
 
 Reply with `BIC armed — explicit session mode; no project record exists until a

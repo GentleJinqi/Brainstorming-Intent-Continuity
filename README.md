@@ -102,8 +102,12 @@ task, or when explicitly restarting that root Brainstorming flow:
 
 ```text
 $superpowers:brainstorming
-$brainstorming-intent-continuity
+$brainstorming-intent-continuity:brainstorming-intent-continuity
 ```
+
+Codex namespaces a plugin-contributed Skill as `plugin-name:skill-name`. In
+this package, both names are `brainstorming-intent-continuity`, so the repeated
+name is intentional.
 
 The expected acknowledgement is:
 
@@ -330,7 +334,7 @@ or inaccurate.
 
 ## Compatibility
 
-Version `0.1.1` has been verified on Linux with Superpowers `6.3.0` and Codex
+Version `0.1.2` has been verified on Linux with Superpowers `6.3.0` and Codex
 CLI `0.149.1`. The deterministic writer requires Python `3.9+` and POSIX file
 locking. Native Windows is not currently supported; macOS has not yet been
 verified.

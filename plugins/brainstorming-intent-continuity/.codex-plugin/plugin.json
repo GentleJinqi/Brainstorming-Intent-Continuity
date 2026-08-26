@@ -1,6 +1,6 @@
 {
   "name": "brainstorming-intent-continuity",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Preserve approved Brainstorming intent through later work.",
   "author": {
     "name": "GentleJinqi",
@@ -29,7 +29,7 @@
     ],
     "websiteURL": "https://github.com/GentleJinqi/Brainstorming-Intent-Continuity",
     "defaultPrompt": [
-      "Start a paired Superpowers Brainstorming session with intent continuity."
+      "Use $brainstorming-intent-continuity:brainstorming-intent-continuity with $superpowers:brainstorming for this root session."
     ]
   }
 }

@@ -20,10 +20,28 @@ $superpowers:brainstorming
 $brainstorming-intent-continuity:brainstorming-intent-continuity
 ```
 
-Reply with `BIC armed — explicit session mode; no project record exists until a
-semantic event.` Arming itself writes nothing. Superpowers Brainstorming alone
-is intentional no-continuity mode. Do not arm from a quoted Skill name, a
-negated request, fenced/pasted documentation, or a prompt-string match.
+Choose the activation receipt from structured Skill evidence in the current
+task context, never from the names appearing in prompt text. Count a Skill as
+present only when the current task context contains its full runtime `<skill>`
+payload (name, path, and body). A catalog entry, plugin toggle or listing, or
+prompt mention is not activation evidence:
+
+- If the runtime has supplied both this Skill and the structured
+  `superpowers:brainstorming` Skill, reply `BIC armed — explicit session mode;
+  no project record exists until a semantic event.`
+- If this Skill is present but structured `superpowers:brainstorming` is
+  absent, reply `BIC not armed — Superpowers Brainstorming was not structurally
+  loaded; invoke $superpowers:brainstorming in the next turn.` Do not create,
+  update, or bind a record. End the turn immediately after that receipt; do not
+  continue Brainstorming or interpret semantic content from the partial turn.
+  Once that Skill is structurally supplied in the same task, give the armed
+  receipt without creating project state. Continuity is forward-only from that
+  turn. Do not backfill pre-activation or partial-turn content unless the user
+  explicitly confirms a brief controlled bootstrap reconstruction.
+
+Arming itself writes nothing. Superpowers Brainstorming alone is intentional
+no-continuity mode. Do not arm from a quoted Skill name, a negated request,
+fenced/pasted documentation, or a prompt-string match.
 
 On a repeat within the same root discussion, resume its armed candidate or
 exact record and say so; never create a second one because of the repeat.
@@ -100,6 +118,16 @@ For a new lineage omit `--record-id` and use expected revision `0`; for an
 update provide the stable ID and current revision. Run
 `"${BIC_SKILL_DIR}/scripts/bic.py" validate` after apply. A revision mismatch
 fails closed: re-read authority, never last-write-wins or invent a replacement.
+
+After a successful apply and validation, use this compact visible receipt in
+the user's language:
+
+```text
+BIC updated — BIC-0007 rev 3 | Delta: <one sentence describing only the semantic change> | state: valid / commit_pending
+```
+
+On first creation, add the exact current/history paths once. On later updates,
+do not repeat paths or restate the record unless asked or preparing a handoff.
 
 Bind only the exact session, project, record, and revision with
 `"${BIC_SKILL_DIR}/scripts/bic.py" bind` using plugin data outside the

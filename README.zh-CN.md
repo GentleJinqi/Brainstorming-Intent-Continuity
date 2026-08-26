@@ -105,6 +105,16 @@ Skill 名都是 `brainstorming-intent-continuity`，因此这里的重复是有�
 BIC armed — explicit session mode; no project record exists until a semantic event.
 ```
 
+只有 Codex 已经结构化加载了两个 Skill，这条回执才成立。如果 Codex 已加载 BIC、但遗漏了
+Superpowers Brainstorming，BIC 会 fail closed，并要求您在下一 turn 单独调用
+`$superpowers:brainstorming`。如果完全没有出现 BIC 回执，则在下一 turn 单独调用插件限定名
+BIC Skill。这两种重试都不会创建项目状态；只有出现 armed 回执后才继续。
+
+partial activation 所在的 turn 会在 fail-closed 回执后立即结束。缺失的 Skill 加载成功后，
+连续性默认从该 turn 开始，采用 forward-only。若要恢复旧任务或 partial turn 中的含义，先
+给出一份简短的 controlled bootstrap 重建，并且只有在用户明确确认后才能写入；不得把任务
+历史自动当成回填来源。
+
 每段连续的根讨论调用一次即可。同一轮讨论中重复调用时，应继续使用已经 armed 的候选意图
 或现有 record，而不是创建重复记录。
 
@@ -118,10 +128,14 @@ BIC armed — explicit session mode; no project record exists until a semantic e
 ```mermaid
 flowchart TD
     A["开始根 Superpowers Brainstorming 任务"] --> B["显式调用两个 Skill 一次"]
-    B --> C["BIC 已 armed：尚不写入项目"]
-    C --> D["在对话中探索替代方案"]
-    D --> E{"是否发生了承重的语义变化？"}
-    E -->|"否"| D
+    B --> C{"两个结构化 Skill 都已加载？"}
+    C -->|"否"| C0["BIC 未 armed：结束当前 turn"]
+    C0 --> C1["下一 turn 补调用缺失的 Skill"]
+    C1 --> C
+    C -->|"是"| D["BIC 已 armed：尚不写入项目"]
+    D --> E0["在对话中探索替代方案"]
+    E0 --> E{"是否发生了承重的语义变化？"}
+    E -->|"否"| E0
     E -->|"是"| F{"含义和授权是否清楚？"}
     F -->|"否"| G["询问一次并解决歧义"]
     F -->|"是"| H["根 controller 起草语义 delta"]
@@ -131,7 +145,7 @@ flowchart TD
     I --> K["history.md：已拒绝或已替代含义"]
     J --> L["继续 Brainstorming"]
     K --> L
-    L --> D
+    L --> E0
     I --> M["可选的下游 handoff"]
     M --> N["传递精确 record ID、revision 和文件路径"]
 ```
@@ -152,6 +166,10 @@ BIC 处于 armed 状态时，只有 root controller 识别并应用了第一项�
 
 未来可能发生的 compaction、agent dispatch、方法变化或 Skill 调用，本身都不属于语义
 事件。
+
+每次成功更新后，BIC 只显示一条紧凑回执：record/revision、一句 semantic delta，以及
+`valid / commit_pending`。第一次创建还会显示一次两个精确路径；后续 revision 除非用户
+要求或正在 handoff，否则不重复整份 record。
 
 ## 项目内的记录结构
 
@@ -300,7 +318,7 @@ Markdown 权威。
 
 ## 兼容性
 
-版本 `0.1.2` 已在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI
+版本 `0.1.3` 已在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI
 `0.149.1` 完成验证。确定性 writer 需要 Python `3.9+` 和 POSIX 文件锁。当前不支持
 原生 Windows；macOS 尚未经过实际验证。
 

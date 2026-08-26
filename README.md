@@ -115,6 +115,18 @@ The expected acknowledgement is:
 BIC armed — explicit session mode; no project record exists until a semantic event.
 ```
 
+That receipt is valid only when Codex has structurally loaded both Skills. If
+Codex loads BIC but omits Superpowers Brainstorming, BIC fails closed and asks
+you to invoke `$superpowers:brainstorming` in the next turn. If no BIC receipt
+appears, invoke the plugin-qualified BIC Skill in the next turn. Neither retry
+creates project state; continue only after the armed receipt appears.
+
+A partial-activation turn ends with the fail-closed receipt. Once the missing
+Skill is loaded, continuity is forward-only from that turn. To recover meaning
+from an older task or the partial turn, first present a brief controlled
+bootstrap reconstruction and apply it only after the user explicitly confirms
+it; never treat task history as an automatic backfill source.
+
 Once per continuous root discussion is enough. Repeating the pair within that
 discussion resumes the same armed candidate or exact record; it must not create
 a duplicate intent record.
@@ -130,10 +142,14 @@ It is not a separate service or an automatic semantic-event detector.
 ```mermaid
 flowchart TD
     A["Start a root Superpowers Brainstorming task"] --> B["Invoke both Skills once"]
-    B --> C["BIC armed: no project write"]
-    C --> D["Explore alternatives in chat"]
-    D --> E{"Load-bearing semantic change?"}
-    E -->|"No"| D
+    B --> C{"Both structured Skills loaded?"}
+    C -->|"No"| C0["BIC not armed: end this turn"]
+    C0 --> C1["Invoke the missing Skill next turn"]
+    C1 --> C
+    C -->|"Yes"| D["BIC armed: no project write"]
+    D --> E0["Explore alternatives in chat"]
+    E0 --> E{"Load-bearing semantic change?"}
+    E -->|"No"| E0
     E -->|"Yes"| F{"Meaning and authority clear?"}
     F -->|"No"| G["Ask once and resolve the ambiguity"]
     F -->|"Yes"| H["Root controller drafts the semantic delta"]
@@ -143,7 +159,7 @@ flowchart TD
     I --> K["history.md: rejected or superseded meaning"]
     J --> L["Continue Brainstorming"]
     K --> L
-    L --> D
+    L --> E0
     I --> M["Optional downstream handoff"]
     M --> N["Exact record ID, revision, and file paths"]
 ```
@@ -165,6 +181,11 @@ supplied record; it never interprets or summarizes the conversation itself.
 
 Possible future compaction, agent dispatch, method changes, or Skill invocation
 are not semantic events by themselves.
+
+After each successful update, BIC reports one compact visible line containing
+the record/revision, a one-sentence semantic delta, and `valid /
+commit_pending`. The first creation also reports both exact record paths once;
+later updates do not repeat the record body unless requested or handed off.
 
 ## Project-owned record layout
 
@@ -334,7 +355,7 @@ or inaccurate.
 
 ## Compatibility
 
-Version `0.1.2` has been verified on Linux with Superpowers `6.3.0` and Codex
+Version `0.1.3` has been verified on Linux with Superpowers `6.3.0` and Codex
 CLI `0.149.1`. The deterministic writer requires Python `3.9+` and POSIX file
 locking. Native Windows is not currently supported; macOS has not yet been
 verified.

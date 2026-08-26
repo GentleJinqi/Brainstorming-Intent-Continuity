@@ -1,0 +1,20 @@
+{
+  "name": "gentlejinqi-bic",
+  "interface": {
+    "displayName": "GentleJinqi Brainstorming Intent Continuity"
+  },
+  "plugins": [
+    {
+      "name": "brainstorming-intent-continuity",
+      "source": {
+        "source": "local",
+        "path": "./plugins/brainstorming-intent-continuity"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

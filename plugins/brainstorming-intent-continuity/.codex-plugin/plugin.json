@@ -1,0 +1,35 @@
+{
+  "name": "brainstorming-intent-continuity",
+  "version": "0.1.1",
+  "description": "Preserve approved Brainstorming intent through later work.",
+  "author": {
+    "name": "GentleJinqi",
+    "url": "https://github.com/GentleJinqi"
+  },
+  "homepage": "https://github.com/GentleJinqi/Brainstorming-Intent-Continuity",
+  "repository": "https://github.com/GentleJinqi/Brainstorming-Intent-Continuity",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "superpowers",
+    "brainstorming",
+    "intent-continuity"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Brainstorming Intent Continuity",
+    "shortDescription": "Carry approved Brainstorming intent into later work.",
+    "longDescription": "A companion Skill for preserving load-bearing Brainstorming decisions across handoffs and recovery.",
+    "developerName": "GentleJinqi",
+    "category": "Productivity",
+    "capabilities": [
+      "Intent continuity",
+      "Project-local records",
+      "Fidelity handoffs"
+    ],
+    "websiteURL": "https://github.com/GentleJinqi/Brainstorming-Intent-Continuity",
+    "defaultPrompt": [
+      "Start a paired Superpowers Brainstorming session with intent continuity."
+    ]
+  }
+}

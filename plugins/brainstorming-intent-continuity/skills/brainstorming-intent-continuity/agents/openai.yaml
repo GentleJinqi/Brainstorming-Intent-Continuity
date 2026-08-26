@@ -1,0 +1,6 @@
+interface:
+  display_name: "Brainstorming Intent Continuity"
+  short_description: "Preserve approved Brainstorming intent across handoffs."
+  default_prompt: "Use $brainstorming-intent-continuity with $superpowers:brainstorming for this root session."
+policy:
+  allow_implicit_invocation: false

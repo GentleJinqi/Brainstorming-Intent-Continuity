@@ -287,6 +287,21 @@ def load_bindings(plugin_data):
     return bindings
 
 
+def validate_binding_entry(binding):
+    for field in ("project", "record_id", "current_path", "history_path"):
+        value = binding.get(field)
+        if not isinstance(value, str) or not value:
+            raise BicError(
+                "invalid_bindings", f"session binding {field} must be a non-empty string"
+            )
+    if not RECORD_ID_PATTERN.fullmatch(binding["record_id"]):
+        raise BicError("invalid_bindings", "session binding record_id is invalid")
+    if type(binding.get("revision")) is not int or binding["revision"] < 1:
+        raise BicError(
+            "invalid_bindings", "session binding revision must be a positive integer"
+        )
+
+
 def binding_payload(binding):
     return {
         "project": binding["project"],
@@ -443,7 +458,8 @@ def command_bind(arguments):
             raise BicError(
                 "invalid_bindings", "session binding entry must be an object"
             )
-        project = Path(binding.get("project", "")).resolve()
+        validate_binding_entry(binding)
+        project = Path(binding["project"]).resolve()
         if is_within(plugin_data, project):
             raise BicError(
                 "invalid_plugin_data", "plugin data must be outside the project"

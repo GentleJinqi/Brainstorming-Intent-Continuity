@@ -806,6 +806,54 @@ class BicCliTestCase(unittest.TestCase):
         self.assertEqual(payload["state"], "invalid_bindings")
         self.assertNotIn("Traceback", result.stderr)
 
+    def test_binding_lookup_fails_closed_for_invalid_required_binding_fields(self):
+        plugin_data = self.root / "plugin-data"
+        plugin_data.mkdir()
+        binding_file = plugin_data / "session-bindings.json"
+        binding = {
+            "project": str(self.project),
+            "record_id": "BIC-0001",
+            "revision": 1,
+            "current_path": str(self.project / "current.md"),
+            "history_path": str(self.project / "history.md"),
+        }
+
+        for field, invalid_value in (
+            ("project", None),
+            ("record_id", None),
+            ("record_id", "invalid"),
+            ("revision", True),
+            ("revision", 0),
+            ("current_path", None),
+            ("history_path", None),
+        ):
+            with self.subTest(field=field, invalid_value=invalid_value):
+                malformed = dict(binding)
+                malformed[field] = invalid_value
+                binding_file.write_text(
+                    json.dumps(
+                        {"schema_version": 1, "sessions": {"session-1": malformed}}
+                    ),
+                    encoding="utf-8",
+                )
+
+                result = self.run_cli(
+                    "bind",
+                    "--plugin-data",
+                    plugin_data,
+                    "--session-id",
+                    "session-1",
+                    "--lookup",
+                )
+
+                self.assertEqual(result.returncode, 2, result.stderr)
+                output_lines = result.stdout.strip().splitlines()
+                self.assertEqual(len(output_lines), 1)
+                payload = json.loads(output_lines[0])
+                self.assertFalse(payload["ok"])
+                self.assertEqual(payload["state"], "invalid_bindings")
+                self.assertNotIn("Traceback", result.stderr)
+
     def test_binding_lookup_fails_closed_when_record_revision_is_stale(self):
         self.assert_success(self.apply())
         plugin_data = self.root / "plugin-data"

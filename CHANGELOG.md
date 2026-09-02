@@ -7,6 +7,12 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [0.1.4] - 2026-08-26
 
+### Changed
+
+- Document the supported existing-installation upgrade path through marketplace
+  refresh, plugin reinstall, version verification, and a new-Task activation
+  boundary without deleting project-owned BIC records.
+
 ### Fixed
 
 - Return exact current/history paths from `apply` and record-scoped `validate`

@@ -86,6 +86,31 @@ codex plugin remove brainstorming-intent-continuity@gentlejinqi-bic
 
 卸载插件不会删除已经属于各个项目的 `.brainstorming-intent/` 记录。
 
+### 更新已有安装
+
+BIC 发布新版本后，先刷新已经配置的 marketplace：
+
+```bash
+codex plugin marketplace upgrade gentlejinqi-bic
+```
+
+如果 marketplace 刷新失败，请停止更新并保留当前已安装版本。刷新成功后，从该 snapshot
+重新安装插件：
+
+```bash
+codex plugin remove brainstorming-intent-continuity@gentlejinqi-bic
+codex plugin add brainstorming-intent-continuity@gentlejinqi-bic
+```
+
+检查已安装版本：
+
+```bash
+codex plugin list
+```
+
+更新后请新建一个 Codex 任务，使已发布的 Skill 加载到新任务上下文。
+更新插件不会删除项目自有的 `.brainstorming-intent/` 记录。
+
 ## 开始一次启用连续性的 Brainstorming
 
 在一次根 Brainstorming 任务开始时，或显式重启这条根 Brainstorming 流程时，调用这两个

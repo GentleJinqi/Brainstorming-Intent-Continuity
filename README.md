@@ -95,6 +95,32 @@ codex plugin remove brainstorming-intent-continuity@gentlejinqi-bic
 Uninstalling the plugin does not delete `.brainstorming-intent/` records that
 already belong to your projects.
 
+### Upgrade an existing installation
+
+After a new BIC release, refresh the configured marketplace first:
+
+```bash
+codex plugin marketplace upgrade gentlejinqi-bic
+```
+
+If the marketplace refresh fails, stop and keep the currently installed
+version. After a successful refresh, reinstall the plugin from that snapshot:
+
+```bash
+codex plugin remove brainstorming-intent-continuity@gentlejinqi-bic
+codex plugin add brainstorming-intent-continuity@gentlejinqi-bic
+```
+
+Verify the installed version:
+
+```bash
+codex plugin list
+```
+
+Start a new Codex task after upgrading so the released Skill is loaded into
+the new task context. Updating the plugin does not delete project-owned
+`.brainstorming-intent/` records.
+
 ## Start a continuity-enabled Brainstorming task
 
 Explicitly invoke both Skills once at the beginning of a root Brainstorming

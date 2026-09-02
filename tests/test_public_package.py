@@ -28,6 +28,35 @@ class PublicPackageContractTestCase(unittest.TestCase):
                 self.assertIn(QUALIFIED_INVOCATION, text)
                 self.assertNotIn(BARE_INVOCATION, text.splitlines())
 
+    def test_existing_installation_upgrade_path_is_bilingual_and_complete(self):
+        commands = (
+            "codex plugin marketplace upgrade gentlejinqi-bic",
+            "codex plugin remove brainstorming-intent-continuity@gentlejinqi-bic",
+            "codex plugin add brainstorming-intent-continuity@gentlejinqi-bic",
+            "codex plugin list",
+        )
+        english = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
+        chinese = (REPOSITORY_ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertIn(command, english)
+                self.assertIn(command, chinese)
+
+        normalized_english = " ".join(english.split())
+        self.assertIn("Start a new Codex task after upgrading", normalized_english)
+        self.assertIn(
+            "does not delete project-owned `.brainstorming-intent/` records",
+            normalized_english,
+        )
+
+        normalized_chinese = " ".join(chinese.split())
+        self.assertIn("更新后请新建一个 Codex 任务", normalized_chinese)
+        self.assertIn(
+            "不会删除项目自有的 `.brainstorming-intent/` 记录",
+            normalized_chinese,
+        )
+
     def test_v014_release_metadata_and_documentation_links(self):
         manifest = json.loads(
             (PLUGIN_ROOT / ".codex-plugin" / "plugin.json").read_text(

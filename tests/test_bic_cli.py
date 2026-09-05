@@ -88,13 +88,18 @@ flowchart LR
 
 class BicCliTestCase(unittest.TestCase):
     def setUp(self):
-        self.temporary_directory = tempfile.TemporaryDirectory()
+        base = REPOSITORY_ROOT / '.tmp'
+        base.mkdir(exist_ok=True)
+        self.temporary_directory = tempfile.TemporaryDirectory(dir=base)
         self.root = Path(self.temporary_directory.name)
         self.project = self.root / "project"
         self.project.mkdir()
         subprocess.run(["git", "init", "-q", str(self.project)], check=True)
-        self.current_draft = self.root / "current-draft.md"
-        self.history_draft = self.root / "history-draft.md"
+        self.scratch = self.project / ".tmp"
+        self.scratch.mkdir()
+        self.env = dict(os.environ, TMPDIR=str(self.scratch), PYTHONDONTWRITEBYTECODE="1")
+        self.current_draft = self.scratch / "current-draft.md"
+        self.history_draft = self.scratch / "history-draft.md"
         self.current_draft.write_text(CURRENT_DRAFT, encoding="utf-8")
         self.history_draft.write_text(HISTORY_DRAFT, encoding="utf-8")
 
@@ -105,6 +110,7 @@ class BicCliTestCase(unittest.TestCase):
         return subprocess.run(
             [sys.executable, str(CLI), *map(str, arguments)],
             cwd=self.project,
+            env=self.env,
             text=True,
             capture_output=True,
             check=False,
@@ -156,8 +162,8 @@ class BicCliTestCase(unittest.TestCase):
             relative_files,
             [
                 "manifest.json",
-                "records/BIC-0001/current.md",
-                "records/BIC-0001/history.md",
+                "records/BIC-0001/slots/a/current.md",
+                "records/BIC-0001/slots/a/history.md",
             ],
         )
         self.assertEqual(result["record_id"], "BIC-0001")
@@ -167,7 +173,7 @@ class BicCliTestCase(unittest.TestCase):
         manifest = json.loads(
             (state_directory / "manifest.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(manifest["schema_version"], 1)
+        self.assertEqual(manifest["schema_version"], 2)
         self.assertEqual(manifest["writer_version"], "1.0.1")
         self.assertIn("compatibility_state", manifest)
         self.assertEqual(manifest["compatibility_state"], "compatible")
@@ -175,10 +181,10 @@ class BicCliTestCase(unittest.TestCase):
         self.assertEqual(manifest["records"]["BIC-0001"]["revision"], 1)
 
         current = (
-            state_directory / "records" / "BIC-0001" / "current.md"
+            state_directory / "records" / "BIC-0001" / "slots" / "a" / "current.md"
         ).read_text(encoding="utf-8")
         history = (
-            state_directory / "records" / "BIC-0001" / "history.md"
+            state_directory / "records" / "BIC-0001" / "slots" / "a" / "history.md"
         ).read_text(encoding="utf-8")
         self.assertIn("# BIC-0001 Current Intent", current)
         self.assertIn("Revision: 1", current)
@@ -194,6 +200,8 @@ class BicCliTestCase(unittest.TestCase):
             / ".brainstorming-intent"
             / "records"
             / "BIC-0001"
+            / "slots"
+            / "a"
         )
 
         self.assertEqual(payload["record_id"], "BIC-0001")
@@ -315,7 +323,7 @@ class BicCliTestCase(unittest.TestCase):
         exhausted_record_directory = state_directory / "records" / "BIC-9999"
         old_record_directory.rename(exhausted_record_directory)
         for filename in ("current.md", "history.md"):
-            record_path = exhausted_record_directory / filename
+            record_path = exhausted_record_directory / "slots" / "a" / filename
             record_path.write_text(
                 record_path.read_text(encoding="utf-8").replace(
                     "BIC-0001", "BIC-9999"
@@ -325,8 +333,8 @@ class BicCliTestCase(unittest.TestCase):
         manifest_path = state_directory / "manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         metadata = manifest["records"].pop("BIC-0001")
-        metadata["current_path"] = "records/BIC-9999/current.md"
-        metadata["history_path"] = "records/BIC-9999/history.md"
+        metadata["current_path"] = "records/BIC-9999/slots/a/current.md"
+        metadata["history_path"] = "records/BIC-9999/slots/a/history.md"
         manifest["records"]["BIC-9999"] = metadata
         manifest["next_record_number"] = 10000
         manifest_path.write_text(
@@ -430,6 +438,7 @@ class BicCliTestCase(unittest.TestCase):
         staged_diff_before = subprocess.run(
             ["git", "diff", "--cached", "--binary", "--", "unrelated-staged.txt"],
             cwd=self.project,
+            env=self.env,
             text=True,
             capture_output=True,
             check=True,
@@ -437,6 +446,7 @@ class BicCliTestCase(unittest.TestCase):
         staged_blob_before = subprocess.run(
             ["git", "show", ":unrelated-staged.txt"],
             cwd=self.project,
+            env=self.env,
             text=True,
             capture_output=True,
             check=True,
@@ -451,6 +461,7 @@ class BicCliTestCase(unittest.TestCase):
         committed_paths = subprocess.run(
             ["git", "show", "--pretty=format:", "--name-only", "HEAD"],
             cwd=self.project,
+            env=self.env,
             text=True,
             capture_output=True,
             check=True,
@@ -459,10 +470,10 @@ class BicCliTestCase(unittest.TestCase):
             sorted(path for path in committed_paths if path),
             [
                 ".brainstorming-intent/manifest.json",
-                ".brainstorming-intent/records/BIC-0001/current.md",
-                ".brainstorming-intent/records/BIC-0001/history.md",
-                ".brainstorming-intent/records/BIC-0002/current.md",
-                ".brainstorming-intent/records/BIC-0002/history.md",
+                ".brainstorming-intent/records/BIC-0001/slots/a/current.md",
+                ".brainstorming-intent/records/BIC-0001/slots/a/history.md",
+                ".brainstorming-intent/records/BIC-0002/slots/a/current.md",
+                ".brainstorming-intent/records/BIC-0002/slots/a/history.md",
             ],
         )
         self.assertEqual(payload["state"], "committed")
@@ -549,6 +560,23 @@ class BicCliTestCase(unittest.TestCase):
             "",
         )
 
+    def test_snapshot_stages_only_registered_retirements_after_slot_rotation(self):
+        self.configure_git_identity_and_baseline()
+        initial = self.assert_success(self.apply())
+        self.assert_success(self.commit_snapshot())
+        self.assert_success(self.update_record())
+        self.assert_success(self.commit_snapshot())
+        for kind in ("current", "history"):
+            retired = str(Path(initial[f"{kind}_path"]).relative_to(self.project))
+            result = subprocess.run(["git", "ls-tree", "HEAD", "--", retired],
+                                    cwd=self.project, env=self.env, text=True,
+                                    capture_output=True, check=True)
+            self.assertEqual(result.stdout, "")
+        status = subprocess.run(["git", "status", "--porcelain", "--", ".brainstorming-intent"],
+                                cwd=self.project, env=self.env, text=True,
+                                capture_output=True, check=True)
+        self.assertEqual(status.stdout, "")
+
     def test_commit_snapshot_rejects_an_invalid_registered_record_before_git_changes(self):
         self.configure_git_identity_and_baseline()
         self.assert_success(self.apply())
@@ -558,6 +586,8 @@ class BicCliTestCase(unittest.TestCase):
             / ".brainstorming-intent"
             / "records"
             / "BIC-0002"
+            / "slots"
+            / "a"
             / "current.md"
         )
         invalid_record.write_text(
@@ -571,6 +601,7 @@ class BicCliTestCase(unittest.TestCase):
         index_before = subprocess.run(
             ["git", "ls-files", "--stage"],
             cwd=self.project,
+            env=self.env,
             text=True,
             capture_output=True,
             check=True,
@@ -578,6 +609,7 @@ class BicCliTestCase(unittest.TestCase):
         head_before = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             cwd=self.project,
+            env=self.env,
             text=True,
             capture_output=True,
             check=True,
@@ -632,6 +664,7 @@ class BicCliTestCase(unittest.TestCase):
         head_before = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             cwd=self.project,
+            env=self.env,
             text=True,
             capture_output=True,
             check=True,
@@ -675,7 +708,7 @@ class BicCliTestCase(unittest.TestCase):
         hook.write_text(
             "#!/bin/sh\n"
             "printf '\\npost-commit mutation\\n' >> "
-            ".brainstorming-intent/records/BIC-0002/current.md\n",
+            ".brainstorming-intent/records/BIC-0002/slots/a/current.md\n",
             encoding="utf-8",
         )
         os.chmod(hook, 0o755)
@@ -691,6 +724,7 @@ class BicCliTestCase(unittest.TestCase):
         head = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             cwd=self.project,
+            env=self.env,
             text=True,
             capture_output=True,
             check=True,
@@ -1122,7 +1156,8 @@ class BicCliTestCase(unittest.TestCase):
         self.assertFalse(plugin_data.exists())
 
     def test_malformed_schema_v1_manifest_returns_one_fail_closed_json_object(self):
-        self.assert_success(self.apply())
+        from bic_v2_support import write_v1
+        write_v1(self.project, revision=1)
         manifest_path = self.project / ".brainstorming-intent" / "manifest.json"
         valid = json.loads(manifest_path.read_text(encoding="utf-8"))
         cases = [("root_not_object", [])]
@@ -1204,6 +1239,8 @@ class BicCliTestCase(unittest.TestCase):
             / ".brainstorming-intent"
             / "records"
             / "BIC-0001"
+            / "slots"
+            / "a"
         )
 
         payload = self.assert_success(

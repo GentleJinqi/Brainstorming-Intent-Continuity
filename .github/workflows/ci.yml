@@ -12,11 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Run the deterministic writer tests
-        run: python -m unittest discover -s tests -v
+        run: |
+          mkdir -p .tmp
+          TMPDIR="$PWD/.tmp" PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
       - name: Validate JSON manifests
         run: |
           python -m json.tool .agents/plugins/marketplace.json >/dev/null

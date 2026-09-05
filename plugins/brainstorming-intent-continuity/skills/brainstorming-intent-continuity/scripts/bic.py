@@ -2,6 +2,8 @@
 """Deterministic mechanics for controller-authored BIC records."""
 
 import argparse
+import copy
+from contextlib import contextmanager
 import fcntl
 import json
 import os
@@ -12,7 +14,7 @@ import tempfile
 from pathlib import Path
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 WRITER_VERSION = "1.0.1"
 STATE_DIRECTORY = ".brainstorming-intent"
 RECORD_ID_PATTERN = re.compile(r"^BIC-[0-9]{4}$")
@@ -53,8 +55,33 @@ def project_path(raw_path):
     return path
 
 
+def project_file(project, relative_path, *, state="invalid_record"):
+    """Resolve a managed location without permitting an escape from its project."""
+    path = project / relative_path
+    try:
+        resolved = path.resolve()
+    except (OSError, RuntimeError, ValueError) as error:
+        raise BicError(state, f"cannot resolve project path: {error}")
+    if not is_within(resolved, project):
+        raise BicError(state, f"path must remain inside the project: {path}")
+    if resolved != path:
+        raise BicError(state, f"managed path must be canonical, without aliases: {path}")
+    return resolved
+
+
 def manifest_path(project):
-    return project / STATE_DIRECTORY / "manifest.json"
+    return project_file(project, f"{STATE_DIRECTORY}/manifest.json", state="invalid_project")
+
+
+@contextmanager
+def project_lock(project, *, exclusive):
+    """Lock the existing project directory, without enrolling a read-only caller."""
+    root_fd = os.open(str(project), os.O_RDONLY)
+    try:
+        fcntl.flock(root_fd, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        yield
+    finally:
+        os.close(root_fd)
 
 
 def load_manifest(project):
@@ -70,17 +97,20 @@ def load_manifest(project):
     if "schema_version" not in manifest or type(manifest["schema_version"]) is not int:
         raise BicError("invalid_manifest", "manifest schema_version must be an integer")
     schema_version = manifest.get("schema_version")
-    if schema_version != SCHEMA_VERSION:
+    if schema_version not in (1, SCHEMA_VERSION):
         raise BicError(
             "compatibility_hold",
-            f"unsupported schema_version {schema_version!r}; supported version is 1",
+            f"unsupported schema_version {schema_version!r}; supported versions are 1 and 2",
             schema_version=schema_version,
         )
-    validate_schema_v1_manifest(manifest)
+    if schema_version == 1:
+        validate_schema_v1_manifest(manifest)
+    else:
+        validate_schema_v2_manifest(manifest)
     return manifest
 
 
-def validate_schema_v1_manifest(manifest):
+def _validate_manifest_metadata(manifest, schema_version):
     if not isinstance(manifest.get("writer_version"), str) or not manifest[
         "writer_version"
     ]:
@@ -125,9 +155,26 @@ def validate_schema_v1_manifest(manifest):
             raise BicError(
                 "invalid_manifest", f"commit_pending for {record_id} must be a boolean"
             )
+        base = f"records/{record_id}"
+        if schema_version == 2:
+            active_slot = metadata.get("active_slot")
+            if active_slot not in ("a", "b"):
+                raise BicError("invalid_manifest", f"invalid active_slot for {record_id}")
+            base += f"/slots/{active_slot}"
+            round_metadata = metadata.get("round")
+            if not isinstance(round_metadata, dict) or round_metadata.get("state") not in (
+                "open", "paused", "cancelled", "replaced", "completed", "unknown"
+            ):
+                raise BicError("invalid_manifest", f"invalid round for {record_id}")
+            for field in ("part_ids", "event_ids"):
+                values = metadata.get(field)
+                if (not isinstance(values, list)
+                    or any(not isinstance(value, str) or not value for value in values)
+                    or len(set(values)) != len(values)):
+                    raise BicError("invalid_manifest", f"invalid {field} for {record_id}")
         expected_paths = {
-            "current_path": f"records/{record_id}/current.md",
-            "history_path": f"records/{record_id}/history.md",
+            "current_path": f"{base}/current.md",
+            "history_path": f"{base}/history.md",
         }
         for field, expected_path in expected_paths.items():
             if metadata.get(field) != expected_path:
@@ -149,6 +196,39 @@ def validate_schema_v1_manifest(manifest):
         )
 
 
+def validate_schema_v1_manifest(manifest):
+    _validate_manifest_metadata(manifest, 1)
+
+
+def validate_schema_v2_manifest(manifest):
+    _validate_manifest_metadata(manifest, 2)
+    retired = manifest.get("retired_paths")
+    if not isinstance(retired, list) or any(
+        not isinstance(path, str) or not re.fullmatch(
+            r"\.brainstorming-intent/records/BIC-[0-9]{4}/(?:slots/[ab]/)?(?:current|history)\.md", path
+        ) for path in retired
+    ) or len(set(retired)) != len(retired):
+        raise BicError("invalid_manifest", "retired_paths must contain unique managed body paths")
+
+
+def require_schema_v2(manifest):
+    if manifest is not None and manifest["schema_version"] == 1:
+        raise BicError("migration_required", "run migrate --expected-schema 1 before writing this project")
+
+
+def _new_manifest():
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "writer_version": WRITER_VERSION,
+        "compatibility_state": "compatible",
+        "project_state": "active",
+        "commit_pending": False,
+        "next_record_number": 1,
+        "records": {},
+        "retired_paths": [],
+    }
+
+
 def atomic_write(path, content):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary_name = None
@@ -165,6 +245,11 @@ def atomic_write(path, content):
             os.fsync(temporary_file.fileno())
             temporary_name = temporary_file.name
         os.replace(temporary_name, path)
+        directory_fd = os.open(str(path.parent), os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
     finally:
         if temporary_name and os.path.exists(temporary_name):
             os.unlink(temporary_name)
@@ -173,7 +258,7 @@ def atomic_write(path, content):
 def render_draft(path, record_id, revision):
     try:
         draft = Path(path).read_text(encoding="utf-8")
-    except OSError as error:
+    except (OSError, UnicodeError) as error:
         raise BicError("invalid_draft", f"cannot read draft {path}: {error}")
     if "{{RECORD_ID}}" not in draft or "{{REVISION}}" not in draft:
         raise BicError(
@@ -231,33 +316,214 @@ def validate_document(text, kind, record_id, revision):
         raise BicError("invalid_draft", f"{kind}.md has unresolved placeholders")
 
 
-def validate_record(project, manifest, record_id):
+def _view_from_metadata(record_id, metadata, schema_version):
+    return {
+        "record_id": record_id,
+        "revision": metadata["revision"],
+        "source_kind": "current",
+        "round": copy.deepcopy(metadata.get("round", {"state": "unknown"})),
+        "current_path": f"{STATE_DIRECTORY}/{metadata['current_path']}",
+        "history_path": f"{STATE_DIRECTORY}/{metadata['history_path']}",
+        "part_ids": list(metadata.get("part_ids", [])),
+        "event_ids": list(metadata.get("event_ids", [])),
+    }
+
+
+def _resolve_record_view_locked(manifest, record_id, revision=None):
+    if manifest is None:
+        raise BicError("not_enrolled", "project has no BIC manifest")
     metadata = manifest["records"].get(record_id)
     if metadata is None:
         raise BicError("record_not_found", f"unknown record: {record_id}")
-    revision = metadata.get("revision")
-    if not isinstance(revision, int) or revision < 1:
-        raise BicError("invalid_manifest", f"invalid revision for {record_id}")
-    record_directory = project / STATE_DIRECTORY / "records" / record_id
-    expected_names = {"current.md", "history.md"}
-    if not record_directory.is_dir():
-        raise BicError("invalid_record", f"missing record directory for {record_id}")
-    actual_names = {path.name for path in record_directory.iterdir() if path.is_file()}
-    if actual_names != expected_names:
-        raise BicError(
-            "invalid_record",
-            f"{record_id} must contain exactly current.md and history.md",
+    if revision is not None and (type(revision) is not int or revision < 1):
+        raise BicError("invalid_revision", "revision must be a positive integer")
+    if revision is not None and revision != metadata["revision"]:
+        raise BicError("version_unavailable", f"{record_id} revision {revision} was not saved")
+    return _view_from_metadata(record_id, metadata, manifest["schema_version"])
+
+
+def resolve_record_view(project, record_id, revision=None):
+    """Resolve a view while the caller holds the project lock."""
+    return _resolve_record_view_locked(load_manifest(project), record_id, revision)
+
+
+def collect_registered_dependencies(manifest, view):
+    """Return project-relative content paths registered for this view."""
+    return {view["current_path"], view["history_path"]}
+
+
+def _registered_paths(manifest):
+    paths = set()
+    for record_id, metadata in manifest["records"].items():
+        paths.update(collect_registered_dependencies(
+            manifest, _view_from_metadata(record_id, metadata, manifest["schema_version"])
+        ))
+    return paths
+
+
+def _read_view_documents(project, view):
+    documents = {}
+    for kind in ("current", "history"):
+        path = project_file(project, view[f"{kind}_path"])
+        try:
+            with path.open(encoding="utf-8", newline="") as source:
+                text = source.read()
+        except (OSError, UnicodeError) as error:
+            raise BicError("invalid_record", f"cannot read {view['record_id']}: {error}")
+        try:
+            validate_document(text, kind, view["record_id"], view["revision"])
+        except BicError as error:
+            raise BicError("invalid_record", str(error))
+        documents[kind] = {"path": str(path), "text": text}
+    return documents
+
+
+def validate_record(project, manifest, record_id):
+    view = _resolve_record_view_locked(manifest, record_id)
+    if manifest["schema_version"] == 1:
+        record_directory = project_file(project, f"{STATE_DIRECTORY}/records/{record_id}")
+        if not record_directory.is_dir():
+            raise BicError("invalid_record", f"missing record directory for {record_id}")
+        actual_names = {path.name for path in record_directory.iterdir() if path.is_file()}
+        if actual_names != {"current.md", "history.md"}:
+            raise BicError("invalid_record", f"{record_id} must contain exactly current.md and history.md")
+    return _read_view_documents(project, view)
+
+
+def read_record(project, record_id, revision=None, selectors=None):
+    with project_lock(project, exclusive=False):
+        manifest = load_manifest(project)
+        view = _resolve_record_view_locked(manifest, record_id, revision)
+        if selectors:
+            raise BicError("event_not_found", "this record has no registered events")
+        documents = validate_record(project, manifest, record_id)
+        return {
+            "ok": True, "state": "read", "project": str(project),
+            "record_id": record_id, "revision": view["revision"],
+            "source_kind": view["source_kind"], "round": view["round"],
+            **documents, "parts": [], "corrections": [],
+        }
+
+
+def _cleanup_retired(project, manifest):
+    # No directory scanning: only explicitly retired, no-longer-registered bodies.
+    for relative_path in set(manifest.get("retired_paths", [])) - _registered_paths(manifest):
+        try:
+            path = project_file(project, relative_path)
+            path.unlink()
+        except (BicError, OSError):
+            # A published view remains authoritative if retirement is interrupted.
+            # Keep the path registered for a later normal write/snapshot retry.
+            pass
+
+
+def _publish_manifest(project, manifest):
+    validate_schema_v2_manifest(manifest)
+    atomic_write(manifest_path(project), json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+
+def _select_apply_target(manifest, record_id, expected_revision):
+    require_schema_v2(manifest)
+    if record_id:
+        if not RECORD_ID_PATTERN.fullmatch(record_id):
+            raise BicError("invalid_record_id", f"invalid record ID: {record_id}")
+        metadata = manifest["records"].get(record_id)
+        if metadata is None:
+            raise BicError("record_not_found", f"unknown record: {record_id}")
+        actual_revision = metadata["revision"]
+    else:
+        number = manifest["next_record_number"]
+        if number > 9999:
+            raise BicError("record_id_exhausted", "four-digit BIC record IDs are exhausted at BIC-9999")
+        record_id, actual_revision = f"BIC-{number:04d}", 0
+    if type(expected_revision) is not int or expected_revision != actual_revision:
+        raise BicError("revision_conflict", f"expected revision {expected_revision}, found {actual_revision}")
+    return record_id, actual_revision
+
+
+def publish_update(project, record_id, expected_revision, draft_set):
+    with project_lock(project, exclusive=True):
+        manifest = load_manifest(project)
+        require_schema_v2(manifest)
+        manifest = manifest if manifest is not None else _new_manifest()
+        metadata = manifest["records"].get(record_id)
+        if metadata is None:
+            allocated, actual_revision = _select_apply_target(manifest, None, expected_revision)
+            if record_id != allocated:
+                raise BicError("revision_conflict", "record allocation changed before publication")
+        else:
+            _, actual_revision = _select_apply_target(manifest, record_id, expected_revision)
+        revision = actual_revision + 1
+        for kind in ("current", "history"):
+            validate_document(draft_set[kind], kind, record_id, revision)
+        update = draft_set.get("update", {})
+        if not isinstance(update, dict) or update:
+            raise BicError("invalid_update", "this storage update accepts no structured fields yet")
+        active_slot = metadata["active_slot"] if metadata else None
+        next_slot = "b" if active_slot == "a" else "a"
+        base = f"records/{record_id}/slots/{next_slot}"
+        destinations = {kind: project_file(project, f"{STATE_DIRECTORY}/{base}/{kind}.md")
+                        for kind in ("current", "history")}
+        for kind, destination in destinations.items():
+            atomic_write(destination, draft_set[kind])
+        next_manifest = copy.deepcopy(manifest)
+        next_metadata = copy.deepcopy(metadata) if metadata else {
+            "round": {"state": "open"}, "part_ids": [], "event_ids": [],
+        }
+        next_metadata.update({
+            "revision": revision, "active_slot": next_slot, "commit_pending": True,
+            "current_path": f"{base}/current.md", "history_path": f"{base}/history.md",
+        })
+        next_manifest["records"][record_id] = next_metadata
+        if actual_revision == 0:
+            next_manifest["next_record_number"] += 1
+        next_manifest["writer_version"] = WRITER_VERSION
+        next_manifest["commit_pending"] = True
+        old_paths = set() if metadata is None else collect_registered_dependencies(
+            manifest, _view_from_metadata(record_id, metadata, SCHEMA_VERSION)
         )
-    try:
-        current = (record_directory / "current.md").read_text(encoding="utf-8")
-        history = (record_directory / "history.md").read_text(encoding="utf-8")
-    except OSError as error:
-        raise BicError("invalid_record", f"cannot read {record_id}: {error}")
-    try:
-        validate_document(current, "current", record_id, revision)
-        validate_document(history, "history", record_id, revision)
-    except BicError as error:
-        raise BicError("invalid_record", str(error))
+        next_manifest["retired_paths"] = sorted(
+            (set(manifest["retired_paths"]) | old_paths) - _registered_paths(next_manifest)
+        )
+        _publish_manifest(project, next_manifest)
+        _cleanup_retired(project, next_manifest)
+        return {
+            "ok": True, "state": "commit_pending", "record_id": record_id,
+            "revision": revision, "current_path": str(destinations["current"]),
+            "history_path": str(destinations["history"]),
+        }
+
+
+def migrate_project(project, expected_schema):
+    with project_lock(project, exclusive=True):
+        manifest = load_manifest(project)
+        if manifest is None:
+            raise BicError("not_enrolled", "project has no BIC manifest")
+        if type(expected_schema) is not int or expected_schema != 1 or manifest["schema_version"] != expected_schema:
+            raise BicError("schema_conflict", "migration requires expected schema 1 and an actual schema 1 project")
+        for record_id in manifest["records"]:
+            validate_record(project, manifest, record_id)
+        next_manifest = copy.deepcopy(manifest)
+        next_manifest.update({"schema_version": SCHEMA_VERSION, "writer_version": WRITER_VERSION})
+        old_paths = _registered_paths(manifest)
+        for record_id, metadata in next_manifest["records"].items():
+            view = _view_from_metadata(record_id, manifest["records"][record_id], 1)
+            documents = _read_view_documents(project, view)
+            base = f"records/{record_id}/slots/a"
+            destinations = {kind: project_file(project, f"{STATE_DIRECTORY}/{base}/{kind}.md")
+                            for kind in ("current", "history")}
+            for kind, destination in destinations.items():
+                atomic_write(destination, documents[kind]["text"])
+            metadata.update({
+                "active_slot": "a", "current_path": f"{base}/current.md",
+                "history_path": f"{base}/history.md", "round": {"state": "unknown"},
+                "part_ids": [], "event_ids": [],
+            })
+        next_manifest["retired_paths"] = sorted(old_paths - _registered_paths(next_manifest))
+        _publish_manifest(project, next_manifest)
+        _cleanup_retired(project, next_manifest)
+        return {"ok": True, "state": "migrated", "schema_version": SCHEMA_VERSION,
+                "records": sorted(next_manifest["records"])}
 
 
 def is_within(path, parent):
@@ -340,8 +606,8 @@ def binding_payload(binding):
 def registry_git_paths(manifest):
     paths = [f"{STATE_DIRECTORY}/manifest.json"]
     for record_id in sorted(manifest["records"]):
-        base = f"{STATE_DIRECTORY}/records/{record_id}"
-        paths.extend((f"{base}/current.md", f"{base}/history.md"))
+        metadata = manifest["records"][record_id]
+        paths.extend(f"{STATE_DIRECTORY}/{metadata[field]}" for field in ("current_path", "history_path"))
     return paths
 
 
@@ -357,119 +623,71 @@ def run_git(project, arguments):
 
 def command_status(arguments):
     project = project_path(arguments.project)
-    manifest = load_manifest(project)
-    if manifest is None:
-        return {"ok": True, "state": "not_enrolled"}
-    record_ids = sorted(manifest["records"])
-    state = "commit_pending" if manifest.get("commit_pending") else "active"
-    return {
-        "ok": True,
-        "state": state,
-        "schema_version": SCHEMA_VERSION,
-        "records": record_ids,
-        "revisions": {
-            record_id: manifest["records"][record_id]["revision"]
-            for record_id in record_ids
-        },
-    }
+    with project_lock(project, exclusive=False):
+        manifest = load_manifest(project)
+        if manifest is None:
+            return {"ok": True, "state": "not_enrolled"}
+        record_ids = sorted(manifest["records"])
+        state = "commit_pending" if manifest.get("commit_pending") else "active"
+        return {
+            "ok": True, "state": state, "schema_version": manifest["schema_version"],
+            "records": record_ids,
+            "revisions": {record_id: manifest["records"][record_id]["revision"] for record_id in record_ids},
+        }
+
+
+def _draft_path(project, raw_path):
+    path = Path(raw_path).resolve()
+    if not is_within(path, project):
+        raise BicError("invalid_draft", "draft must resolve inside its project")
+    return path
 
 
 def command_apply(arguments):
     project = project_path(arguments.project)
-    root_fd = os.open(str(project), os.O_RDONLY)
-    try:
-        fcntl.flock(root_fd, fcntl.LOCK_EX)
+    # Rendering has no registry effects. Publication rechecks allocation/revision
+    # under its own exclusive lock, rather than nesting locks on different fds.
+    with project_lock(project, exclusive=False):
         manifest = load_manifest(project)
-        if manifest is None:
-            manifest = {
-                "schema_version": SCHEMA_VERSION,
-                "writer_version": WRITER_VERSION,
-                "compatibility_state": "compatible",
-                "project_state": "active",
-                "commit_pending": False,
-                "next_record_number": 1,
-                "records": {},
-            }
+        manifest = manifest if manifest is not None else _new_manifest()
+        record_id, actual_revision = _select_apply_target(manifest, arguments.record_id, arguments.expected_revision)
+    draft_set = {kind: render_draft(_draft_path(project, getattr(arguments, f"{kind}_draft")),
+                                   record_id, actual_revision + 1)
+                 for kind in ("current", "history")}
+    draft_set["update"] = {}
+    if arguments.update_draft:
+        path = _draft_path(project, arguments.update_draft)
+        try:
+            draft_set["update"] = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            raise BicError("invalid_update", f"cannot read update draft: {error}")
+    return publish_update(project, record_id, arguments.expected_revision, draft_set)
 
-        if arguments.record_id:
-            record_id = arguments.record_id
-            if not RECORD_ID_PATTERN.fullmatch(record_id):
-                raise BicError("invalid_record_id", f"invalid record ID: {record_id}")
-            metadata = manifest["records"].get(record_id)
-            if metadata is None:
-                raise BicError("record_not_found", f"unknown record: {record_id}")
-            actual_revision = metadata.get("revision")
-        else:
-            next_record_number = manifest["next_record_number"]
-            if next_record_number > 9999:
-                raise BicError(
-                    "record_id_exhausted",
-                    "four-digit BIC record IDs are exhausted at BIC-9999",
-                )
-            record_id = f"BIC-{next_record_number:04d}"
-            actual_revision = 0
 
-        if arguments.expected_revision != actual_revision:
-            raise BicError(
-                "revision_conflict",
-                f"expected revision {arguments.expected_revision}, found {actual_revision}",
-            )
-        revision = actual_revision + 1
-        current = render_draft(arguments.current_draft, record_id, revision)
-        history = render_draft(arguments.history_draft, record_id, revision)
-        validate_document(current, "current", record_id, revision)
-        validate_document(history, "history", record_id, revision)
+def command_read(arguments):
+    return read_record(project_path(arguments.project), arguments.record_id, arguments.revision)
 
-        record_directory = project / STATE_DIRECTORY / "records" / record_id
-        atomic_write(record_directory / "current.md", current)
-        atomic_write(record_directory / "history.md", history)
-        manifest["records"][record_id] = {
-            "revision": revision,
-            "commit_pending": True,
-            "current_path": f"records/{record_id}/current.md",
-            "history_path": f"records/{record_id}/history.md",
-        }
-        if actual_revision == 0:
-            manifest["next_record_number"] += 1
-        manifest["commit_pending"] = True
-        atomic_write(
-            manifest_path(project),
-            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        )
-    finally:
-        os.close(root_fd)
 
-    return {
-        "ok": True,
-        "state": "commit_pending",
-        "record_id": record_id,
-        "revision": revision,
-        "current_path": str(record_directory / "current.md"),
-        "history_path": str(record_directory / "history.md"),
-    }
+def command_migrate(arguments):
+    return migrate_project(project_path(arguments.project), arguments.expected_schema)
 
 
 def command_validate(arguments):
     project = project_path(arguments.project)
-    manifest = load_manifest(project)
-    if manifest is None:
-        raise BicError("not_enrolled", "project has no BIC manifest")
-    record_ids = [arguments.record_id] if arguments.record_id else sorted(manifest["records"])
-    for record_id in record_ids:
-        validate_record(project, manifest, record_id)
-    payload = {"ok": True, "state": "valid", "records": record_ids}
-    if arguments.record_id:
-        record_id = arguments.record_id
-        record_directory = project / STATE_DIRECTORY / "records" / record_id
-        payload.update(
-            {
-                "record_id": record_id,
-                "revision": manifest["records"][record_id]["revision"],
-                "current_path": str(record_directory / "current.md"),
-                "history_path": str(record_directory / "history.md"),
-            }
-        )
-    return payload
+    with project_lock(project, exclusive=False):
+        manifest = load_manifest(project)
+        if manifest is None:
+            raise BicError("not_enrolled", "project has no BIC manifest")
+        record_ids = [arguments.record_id] if arguments.record_id else sorted(manifest["records"])
+        for record_id in record_ids:
+            validate_record(project, manifest, record_id)
+        payload = {"ok": True, "state": "valid", "records": record_ids}
+        if arguments.record_id:
+            view = _resolve_record_view_locked(manifest, arguments.record_id)
+            payload.update({"record_id": arguments.record_id, "revision": view["revision"],
+                            "current_path": str(project_file(project, view["current_path"])),
+                            "history_path": str(project_file(project, view["history_path"]))})
+        return payload
 
 
 def command_bind(arguments):
@@ -504,10 +722,9 @@ def command_bind(arguments):
         metadata = manifest["records"].get(record_id)
         if metadata is None or metadata.get("revision") != binding.get("revision"):
             raise BicError("stale_binding", "bound record revision is stale")
-        record_directory = project / STATE_DIRECTORY / "records" / record_id
         expected_paths = {
-            "current_path": str(record_directory / "current.md"),
-            "history_path": str(record_directory / "history.md"),
+            "current_path": str(project_file(project, f"{STATE_DIRECTORY}/{metadata['current_path']}")),
+            "history_path": str(project_file(project, f"{STATE_DIRECTORY}/{metadata['history_path']}")),
         }
         if any(binding.get(field) != path for field, path in expected_paths.items()):
             raise BicError("stale_binding", "bound record paths are stale")
@@ -535,13 +752,12 @@ def command_bind(arguments):
             f"expected revision {arguments.expected_revision}, found {metadata.get('revision')}",
         )
     validate_record(project, manifest, arguments.record_id)
-    record_directory = project / STATE_DIRECTORY / "records" / arguments.record_id
     binding = {
         "project": str(project),
         "record_id": arguments.record_id,
         "revision": arguments.expected_revision,
-        "current_path": str(record_directory / "current.md"),
-        "history_path": str(record_directory / "history.md"),
+        "current_path": str(project_file(project, f"{STATE_DIRECTORY}/{metadata['current_path']}")),
+        "history_path": str(project_file(project, f"{STATE_DIRECTORY}/{metadata['history_path']}")),
     }
 
     plugin_data.mkdir(parents=True, exist_ok=True)
@@ -575,6 +791,13 @@ def command_commit_snapshot(arguments):
         for record_id in record_ids:
             validate_record(project, manifest, record_id)
         snapshot_paths = registry_git_paths(manifest)
+        retired = sorted(set(manifest.get("retired_paths", [])) - _registered_paths(manifest))
+        if retired:
+            _cleanup_retired(project, manifest)
+            tracked = run_git(project, ["ls-files", "-z", "--", *retired])
+            if tracked.returncode != 0:
+                raise BicError("commit_pending", "cannot resolve tracked retired BIC paths")
+            snapshot_paths.extend(path for path in tracked.stdout.split("\0") if path)
         original_pending = {
             record_id: manifest["records"][record_id]["commit_pending"]
             for record_id in record_ids
@@ -653,6 +876,7 @@ def build_parser():
     apply_parser.add_argument("--record-id")
     apply_parser.add_argument("--current-draft", required=True)
     apply_parser.add_argument("--history-draft", required=True)
+    apply_parser.add_argument("--update-draft")
     apply_parser.add_argument("--expected-revision", required=True, type=int)
     apply_parser.set_defaults(handler=command_apply)
 
@@ -660,6 +884,19 @@ def build_parser():
     validate_parser.add_argument("--project", required=True)
     validate_parser.add_argument("--record-id")
     validate_parser.set_defaults(handler=command_validate)
+
+    read_parser = subparsers.add_parser("read")
+    read_parser.add_argument("--project", required=True)
+    read_parser.add_argument("--record-id", required=True)
+    target = read_parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("--current", action="store_true")
+    target.add_argument("--revision", type=int)
+    read_parser.set_defaults(handler=command_read)
+
+    migrate_parser = subparsers.add_parser("migrate")
+    migrate_parser.add_argument("--project", required=True)
+    migrate_parser.add_argument("--expected-schema", required=True, type=int)
+    migrate_parser.set_defaults(handler=command_migrate)
 
     bind_parser = subparsers.add_parser("bind")
     bind_parser.add_argument("--plugin-data", required=True)
@@ -693,6 +930,9 @@ def main():
                 **error.details,
             }
         )
+        return 2
+    except OSError as error:
+        emit({"ok": False, "state": "io_error", "error": str(error)})
         return 2
 
 

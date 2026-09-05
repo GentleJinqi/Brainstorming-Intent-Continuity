@@ -577,6 +577,44 @@ class BicCliTestCase(unittest.TestCase):
                                 capture_output=True, check=True)
         self.assertEqual(status.stdout, "")
 
+    def test_snapshot_retry_commits_retirements_already_deleted_from_the_index(self):
+        self.configure_git_identity_and_baseline()
+        initial = self.assert_success(self.apply())
+        self.assert_success(self.commit_snapshot())
+        self.assert_success(self.update_record())
+        retired = sorted(
+            str(Path(initial[f"{kind}_path"]).relative_to(self.project))
+            for kind in ("current", "history")
+        )
+        hook = self.project / ".git" / "hooks" / "pre-commit"
+        hook.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+        hook.chmod(0o755)
+
+        failed = self.commit_snapshot()
+
+        self.assertEqual(failed.returncode, 2, failed.stderr or failed.stdout)
+        self.assertEqual(json.loads(failed.stdout)["state"], "commit_pending")
+        staged = subprocess.run(
+            ["git", "diff", "--cached", "--name-only", "--diff-filter=D", "--", *retired],
+            cwd=self.project, env=self.env, text=True, capture_output=True, check=True,
+        )
+        self.assertEqual(sorted(staged.stdout.splitlines()), retired)
+        hook.unlink()
+
+        retried = self.assert_success(self.commit_snapshot())
+
+        self.assertTrue(retried["bic_paths_clean"])
+        head = subprocess.run(
+            ["git", "ls-tree", "--name-only", "HEAD", "--", *retired],
+            cwd=self.project, env=self.env, text=True, capture_output=True, check=True,
+        )
+        self.assertEqual(head.stdout, "")
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--", ".brainstorming-intent"],
+            cwd=self.project, env=self.env, text=True, capture_output=True, check=True,
+        )
+        self.assertEqual(status.stdout, "")
+
     def test_commit_snapshot_rejects_an_invalid_registered_record_before_git_changes(self):
         self.configure_git_identity_and_baseline()
         self.assert_success(self.apply())

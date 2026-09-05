@@ -791,13 +791,24 @@ def command_commit_snapshot(arguments):
         for record_id in record_ids:
             validate_record(project, manifest, record_id)
         snapshot_paths = registry_git_paths(manifest)
+        staging_paths = list(snapshot_paths)
         retired = sorted(set(manifest.get("retired_paths", [])) - _registered_paths(manifest))
         if retired:
             _cleanup_retired(project, manifest)
             tracked = run_git(project, ["ls-files", "-z", "--", *retired])
-            if tracked.returncode != 0:
+            # A failed commit can leave retirements staged: absent from the index,
+            # but still in HEAD. Keep those exact paths in the retry snapshot too.
+            staged_deletions = run_git(
+                project, ["diff", "--cached", "--name-only", "--diff-filter=D", "-z", "--", *retired]
+            )
+            if tracked.returncode != 0 or staged_deletions.returncode != 0:
                 raise BicError("commit_pending", "cannot resolve tracked retired BIC paths")
-            snapshot_paths.extend(path for path in tracked.stdout.split("\0") if path)
+            # HEAD-only deletions are already staged; git add cannot match them.
+            staging_paths.extend(path for path in tracked.stdout.split("\0") if path)
+            snapshot_paths.extend(sorted({
+                path for result in (tracked, staged_deletions)
+                for path in result.stdout.split("\0") if path
+            }))
         original_pending = {
             record_id: manifest["records"][record_id]["commit_pending"]
             for record_id in record_ids
@@ -811,7 +822,7 @@ def command_commit_snapshot(arguments):
             manifest_path(project),
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         )
-        staged = run_git(project, ["add", "--", *snapshot_paths])
+        staged = run_git(project, ["add", "--", *staging_paths])
         if staged.returncode == 0:
             committed = run_git(
                 project,

@@ -1,6 +1,14 @@
 import json
+import os
+import re
+import shlex
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
+
+from bic_v2_support import load_bic, write_v1
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -9,6 +17,83 @@ QUALIFIED_INVOCATION = (
     "$brainstorming-intent-continuity:brainstorming-intent-continuity"
 )
 BARE_INVOCATION = "$brainstorming-intent-continuity"
+SKILL_ROOT = PLUGIN_ROOT / "skills" / "brainstorming-intent-continuity"
+
+
+def documented_commands(path):
+    """Read copyable CLI examples, excluding shell setup and syntax synopses."""
+    text = path.read_text(encoding="utf-8").replace("\\\n", " ")
+    commands = []
+    names = {"read", "save-version", "bind", "migrate"}
+    for block in re.findall(r"```(?:bash|text)\n(.*?)```", text, re.S):
+        for line in block.splitlines():
+            words = shlex.split(line, comments=True)
+            if len(words) >= 3 and words[:2] == ["python3", "${BIC_SKILL_DIR}/scripts/bic.py"]:
+                commands.append(words[2:])
+            elif words and words[0] in names:
+                commands.append(words)
+    return commands
+
+
+class PublicCommandExamplesTestCase(unittest.TestCase):
+    def test_skill_and_bilingual_examples_match_the_real_parser(self):
+        parser = load_bic().build_parser()
+        for path in (SKILL_ROOT / "SKILL.md", REPOSITORY_ROOT / "README.md",
+                     REPOSITORY_ROOT / "README.zh-CN.md"):
+            commands = documented_commands(path)
+            with self.subTest(path=path.name):
+                self.assertTrue({"read", "save-version", "bind", "migrate"}
+                                <= {command[0] for command in commands},
+                                "Missing copyable current/saved input and migration commands")
+            for command in commands:
+                with self.subTest(path=path.name, command=command):
+                    args = parser.parse_args(["3" if word == "N" else word for word in command])
+                    if args.command == "bind":
+                        self.assertIsNotNone(args.project)
+                        self.assertIsNone(args.plugin_data)
+                        if not args.lookup:
+                            self.assertIsNotNone(args.record_id)
+                            self.assertIsNotNone(args.expected_revision)
+
+    def test_bilingual_migration_and_saved_input_examples_preserve_originals(self):
+        # A stale flag, wrong revision, or mutable pointer in a published example
+        # must fail against actual project-local storage, not a prose assertion.
+        base = REPOSITORY_ROOT / ".tmp"
+        base.mkdir(exist_ok=True)
+        for name in ("README.md", "README.zh-CN.md"):
+            with self.subTest(document=name), tempfile.TemporaryDirectory(dir=base) as folder:
+                project = Path(folder)
+                scratch = project / ".tmp"
+                scratch.mkdir()
+                write_v1(project)
+                original = {kind: (project / ".brainstorming-intent" / "records" /
+                            "BIC-0001" / f"{kind}.md").read_bytes()
+                            for kind in ("current", "history")}
+                env = dict(os.environ, TMPDIR=str(scratch), PYTHONDONTWRITEBYTECODE="1")
+                examples = documented_commands(REPOSITORY_ROOT / name)
+                self.assertTrue(examples, "No executable migration/binding examples")
+                examples.sort(key=lambda command: command[0] != "migrate")
+                results = []
+                for command in examples:
+                    argv = [str(project) if word == "$BIC_PROJECT" else word for word in command]
+                    result = subprocess.run([sys.executable, str(SKILL_ROOT / "scripts/bic.py"), *argv],
+                                            capture_output=True, text=True, env=env)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    results.append((argv, json.loads(result.stdout)))
+                reads = [value for argv, value in results if argv[0] == "read"]
+                self.assertEqual({value["source_kind"] for value in reads}, {"current", "saved"})
+                for value in reads:
+                    self.assertEqual(value["revision"], 3)
+                    self.assertEqual(value["round"]["state"], "unknown")
+                    for kind in ("current", "history"):
+                        self.assertEqual(value[kind]["text"].encode(), original[kind])
+                binding = json.loads((project / ".brainstorming-intent/session-bindings.json").read_text())
+                entry = binding["sessions"]["SESSION"]
+                self.assertEqual(entry["revision"], 3)
+                for kind in ("current", "history"):
+                    saved = Path(entry[f"{kind}_path"])
+                    self.assertTrue(saved.is_relative_to(project / ".brainstorming-intent/versions"))
+                    self.assertEqual(saved.read_bytes(), original[kind])
 
 
 class PublicPackageContractTestCase(unittest.TestCase):

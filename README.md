@@ -43,8 +43,8 @@ BIC separates three kinds of information:
 | Current intent | `current.md` | The operative goal, decisions, prohibitions, rationale, proof, edge cases, and open questions |
 | Intent history | `history.md` | Rejected or superseded directions, reasons, turning points, and material counterexamples |
 
-Each intent record contains two Markdown files and two synchronized Mermaid
-projections:
+An ordinary intent record has an active pair of Markdown files and two
+synchronized Mermaid projections:
 
 - `current.md` contains the **Current Intent Map**;
 - `history.md` contains the **Evolution Map**.
@@ -221,6 +221,33 @@ the record/revision, a one-sentence semantic delta, and `valid /
 commit_pending`. The first creation also reports both exact record paths once;
 later updates do not repeat the record body unless requested or handed off.
 
+## One result, one round
+
+One record ID follows one deliverable discussion result, not an entire product,
+Codex task, topic word, or file length. Refinements of the same result keep its
+ID across tasks when writer ownership is handed off. An independent result gets
+its own ID after a qualifying semantic event; this does not end the earlier round.
+
+Before marking a round completed, the root explicitly asks whether its agreed
+questions are sufficiently answered and whether the result may be delivered and
+the round ended, then obtains the user's affirmative answer. Local approval,
+thanks, silence, a task switch, a spec, or a revision count cannot replace this
+confirmation. Discussion-only results can end without producing a spec or plan.
+
+An `end` update records that confirmation as a new revision and saves its original
+version in the same publication. Ending grants no successor authority. Native
+spec drafting and review may proceed while the BIC round is still open; one
+native approval question may also request ending confirmation when both concern
+the same complete result.
+
+Pause preserves an unfinished result; cancellation and replacement record their
+own facts, including the successor relationship for replacement. Inactivity
+implies none of them. Downstream reading or implementation does not reopen a
+round. Repair execution that missed an unchanged approved design. Reopen an
+ended commitment only for a concrete substantive defect, identifying the original
+promise and affected scope, preserving the confirmed version and unaffected
+conclusions, and obtaining ending confirmation again after revision.
+
 ## Project-owned record layout
 
 The first successful record update creates:
@@ -228,19 +255,29 @@ The first successful record update creates:
 ```text
 .brainstorming-intent/
 ├── manifest.json
-└── records/
-    └── BIC-0001/
-        ├── current.md
-        └── history.md
+└── records/BIC-0001/slots/a/
+    ├── current.md
+    └── history.md
 ```
 
-`manifest.json` tracks stable record IDs, revisions, compatibility state, and
-pending Git state. It does not store a transcript.
+`manifest.json` selects the active pair and tracks stable IDs, revisions, round
+facts, saved versions, registered parts and corrections, and pending Git state.
+It does not store a transcript. Later updates alternate at most two working
+slots (`a` and `b`); the inactive slot is not a saved historical version.
 
-One intent lineage follows one accepted outcome and its constraints.
-Requirements, examples, and refinements of that outcome remain in the same
-lineage. An independent outcome starts a new lineage only after its own
-load-bearing semantic event.
+Only when needed, the registry adds `versions/BIC-0001/rN/` for saved original
+current/history and their descriptor, `parts/BIC-0001/DIGEST.md` for archived
+history or effective topics, and `session-bindings.json` for session association.
+Ordinary revisions do not create per-revision copies or empty archive indexes.
+The writer publishes one complete revision through the manifest under a project
+lock; readers obtain matching identity and bodies under the same shared lock.
+
+All generated drafts, temporary output, records, parts, saved versions, and
+bindings belong inside the project using BIC. Declare that location before
+generating files, use its `.tmp/` for temporary work, and pass this boundary to
+authorized delegates and tools. Resolved paths must remain inside the project.
+The fixed Markdown headings, complete CLI and JSON contracts are in
+[record-format.md](plugins/brainstorming-intent-continuity/skills/brainstorming-intent-continuity/references/record-format.md).
 
 ## Two files, two maps
 
@@ -309,18 +346,98 @@ can still be revised as important meaning changes, recovered in a later task
 through an exact pointer, or inspected as the current understanding of the
 intent.
 
-If downstream work does occur, the handoff includes the stable record ID,
-revision, and exact paths:
+When a specific revision becomes a durable spec or handoff input, save the
+original bodies and their necessary topic/history dependencies with
+`save-version`, reusing an identical saved version. This does not increment the
+semantic revision or end the round. Continued reading in the same context needs
+no new copy. An `end` update saves its new confirmed revision automatically.
+
+A handoff identifies the project, stable ID, revision, and actual returned paths,
+and states whether it requests current effective content or a saved original.
+For example, after successful preservation:
 
 ```text
-BIC pointer: BIC-0001 rev 3
-current: <project>/.brainstorming-intent/records/BIC-0001/current.md
-history: <project>/.brainstorming-intent/records/BIC-0001/history.md
+BIC saved pointer: <project> | BIC-0001 rev 3
+current: <project>/.brainstorming-intent/versions/BIC-0001/r3/current.md
+history: <project>/.brainstorming-intent/versions/BIC-0001/r3/history.md
 ```
 
-A spec, plan, task brief, implementer, or reviewer should map only its relevant
-decisions from that authority. It should not receive a copied transcript as a
-substitute.
+Use paths returned by successful apply/preservation, never guessed paths or a
+new handoff summary in place of the originals. A saved version preserves the
+then-current grounds; it does not override later user authority or automatically
+update or reapprove a spec.
+
+## Supplement the same native spec
+
+When BIC is armed and associated and native Brainstorming needs a spec, obtain
+and consider its corresponding current/history or saved version during that
+same native design and review. The exact version already obtained in context
+can be reused. The spec still draws on conversation, project facts, applicable
+requirements, native exploration and tradeoffs, and the BIC supplement.
+Effective user constraints keep their authority; rejected directions stay history.
+
+Express relevant requirements naturally in the native spec, with exact references
+where useful. Include the BIC pointer and reading instruction in the existing
+native review handoff, and repair omissions in that same spec. A link alone
+does not express a requirement. BIC creates no second spec, required BIC headings,
+extra review report, or second approval flow. Superpowers files, methods,
+capabilities, invocation, ordering and approvals remain unchanged. Native
+writing-plans consumes the same spec; every downstream reader need not reread
+the full record. Ordinary tasks without BIC continue normally, and paths that
+need no spec or plan gain none.
+
+If an agreed input is unavailable, name the exact missing project/record/revision
+or file and recover it from its explicit original source or known exact copies.
+An exact version already present in context suffices; a later revision, summary,
+or reconstruction does not. Do not guess another association or repeat exhausted
+searches without a new lead. Carry registered later corrections with old content.
+If recovery fails and no decision covers this incident, explain the omission and
+its unknown impact, then ask whether the user accepts proceeding without this
+particular input. Continue independent work while awaiting that answer, keep the
+dependent obligation open, and do not claim the agreed supplement was used.
+An accepted omission applies only to that incident; visible conversation alone
+does not establish that unread material is dispensable.
+
+## Read, preserve, and associate an input
+
+Resolve `BIC_SKILL_DIR` from the runtime-supplied Skill path, rather than assuming
+the target project contains plugin source. Replace the example project, record,
+revision and session with the exact known values. These examples assume an
+enrolled schema 2 project with `BIC-0001` currently at revision 3:
+
+```bash
+BIC_SKILL_MD="/absolute/path/supplied-by-the-runtime/SKILL.md"
+BIC_SKILL_DIR="$(cd "$(dirname "$BIC_SKILL_MD")" && pwd -P)"
+BIC_PROJECT="/absolute/path/to/your-project"
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" read --project "$BIC_PROJECT" --record-id BIC-0001 --current
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" save-version --project "$BIC_PROJECT" --record-id BIC-0001 --revision 3
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" read --project "$BIC_PROJECT" --record-id BIC-0001 --revision 3
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" bind --project "$BIC_PROJECT" --session-id SESSION --record-id BIC-0001 --expected-revision 3
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" bind --project "$BIC_PROJECT" --session-id SESSION --lookup
+```
+
+`read --current` returns the effective revision. `read --revision N` prefers its
+saved version; if unsaved but exactly current, it returns `source_kind: current`,
+whose mutable paths are not durable references. Unavailable older revisions
+return `version_unavailable`, never a newer substitute.
+
+Setting a binding saves the expected **current** revision and registers its exact
+saved paths inside `.brainstorming-intent/session-bindings.json`. If current has
+advanced, setting it with the old expected revision returns `revision_conflict`.
+An existing binding lookup and `read --revision N` can still resolve the old saved
+input. Lookup is read-only, does not arm BIC, and grants no semantic write ownership.
+
+For unusually long unfinished rounds, archive whole historical events with stable
+entries for their scope, conditions and location. Deduplicate effective content
+first; when needed, group it into actual topic bodies while current retains global
+constraints and navigation covering every effective topic. Effective topic bodies
+remain requirements. Neither size nor revision count ends a round or changes its ID.
+Ordinary reads include effective topics and history navigation, not all archived
+bodies. Add `--event E1` to either read mode to obtain a relevant old event and its
+registered later corrections, distinguished by original/view/source revision.
+Expand related history when the entry does not settle relevance. Keep original
+events intact and distinguish later supersession from `recording_error`; an
+offline old file cannot establish the absence of later corrections.
 
 ## Updates and conflict handling
 
@@ -333,6 +450,28 @@ authority. It does not silently overwrite newer meaning.
 Unsupported schema versions enter a read-only compatibility hold rather than
 being migrated silently.
 
+### Explicit schema 1 migration
+
+The Unreleased writer reads and validates schema 1 without changing it. Before
+writing that project's old records, obtain project migration authority and run
+this command using the same runtime helper/project setup above:
+
+```bash
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" migrate --project "$BIC_PROJECT" --expected-schema 1
+```
+
+Migration preserves record IDs, revision numbers, current/history original bytes,
+and pending flags. It records ending state as `unknown`, not inferred completion,
+and does not invent unsaved historical versions. Original content moves into the
+schema 2 working layout; use returned paths. The old schema 1 writer rejects
+schema 2 in read-only `compatibility_hold`, so do not send a migrated project
+back to an old writer for updates.
+
+Old `bind --plugin-data ...` calls return `binding_migration_required` with the
+project-local command guidance; they do not silently read, move, or alter old
+external binding files. Re-establish a binding with an explicit project, session,
+record and expected current revision. No other project is traversed or migrated.
+
 ## Git behavior
 
 Applying a record update never invokes Git automatically.
@@ -343,8 +482,11 @@ as project-owned working-tree changes.
 
 A complete registry snapshot may be committed only through the explicit
 `commit-snapshot` operation and only when commit authority has been granted.
-That operation covers the manifest and every registered lineage together while
-preserving unrelated staged and modified files.
+That operation covers the manifest, every active record, saved descriptors and
+their dependencies, and correction material together while preserving unrelated
+staged and modified files. It excludes inactive working slots, temporary files,
+and session runtime state. If a complete snapshot is not authorized, successful
+record work remains `commit_pending`.
 
 BIC reports the state of BIC-owned paths only. It never claims that the entire
 worktree is clean.
@@ -356,11 +498,11 @@ records may contain information about that project and may later be committed
 or pushed under the project's own rules. Inspect them before sharing a
 repository publicly.
 
-Optional session recovery writes `session-bindings.json` to plugin/runtime data
-outside the project. It stores the session ID, absolute project/current/history
-paths, record ID, and revision; it does not store design text or a transcript.
-Absolute paths can reveal usernames or project names, so do not publish this
-file.
+Optional session recovery writes `.brainstorming-intent/session-bindings.json`
+inside the project. It stores the session ID, absolute project/saved-body paths,
+record ID, and revision; it does not store design text or a transcript. BIC
+snapshots exclude this runtime file. Absolute paths can reveal usernames or
+project names, so inspect other sharing mechanisms separately.
 
 This repository contains only product source, package metadata, public
 documentation, synthetic examples, and tests. It does not include user
@@ -389,7 +531,9 @@ or inaccurate.
 
 ## Compatibility
 
-Version `0.1.4` has been verified on Linux with Superpowers `6.3.0` and Codex
+The stable release remains `0.1.4`; the new schema 2 and round behavior described
+above belongs to `Unreleased`, not an installed-release claim. Release `0.1.4`
+was verified on Linux with Superpowers `6.3.0` and Codex
 CLI `0.149.1`. The deterministic writer requires Python `3.9+` and POSIX file
 locking. Native Windows is not currently supported; macOS has not yet been
 verified.

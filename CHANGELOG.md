@@ -5,6 +5,41 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Explicit round facts for one deliverable discussion result, whole-round ending
+  confirmation, and scoped reopening without treating execution repair as a new
+  design round.
+- Exact current/saved reads, original-version preservation on confirmed ending
+  and durable handoff, and optional immutable history/topic parts with event
+  navigation and later correction lookup.
+- Schema 2 project-local storage with shared reader/exclusive writer locking,
+  alternating working slots, and one manifest publication per complete revision.
+
+### Changed
+
+- Supply and consider BIC material in the same native Brainstorming spec design
+  and review, preserving native methods, ordering and approvals. Recover exact
+  missing inputs or obtain an incident-specific omission decision while
+  continuing independent work.
+- Keep every generated draft, temporary file, record, preserved input and session
+  binding inside the project using BIC. Setting a binding saves the expected
+  current revision; existing bindings continue to resolve their saved input.
+- Include registered saved versions, parts and corrections in complete-registry
+  Git snapshots, excluding inactive working slots and session runtime state.
+
+### Compatibility
+
+- Schema 1 remains readable and validatable; writes require explicit project
+  migration with `migrate --expected-schema 1`. Migration preserves IDs,
+  revisions, body bytes and pending flags, recording unknown ending status.
+  Older writers hold schema 2 read-only rather than update it.
+- Legacy `bind --plugin-data` returns `binding_migration_required`; rebind with
+  an explicit project and expected current revision. Old external binding files
+  remain unchanged. No automatic cross-project migration is performed.
+- Stable package and release metadata remains `0.1.4`; these Unreleased changes
+  are not included in that published release.
+
 ## [0.1.4] - 2026-08-26
 
 ### Changed

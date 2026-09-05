@@ -42,6 +42,15 @@ Manifest record fields include `revision`, `active_slot`, `current_path`,
 version paths, dependencies, and `retired_paths` are project-relative and start
 with `.brainstorming-intent/`. CLI body paths are absolute actual paths.
 
+The manifest envelope contains `schema_version` (2), non-empty `writer_version`,
+`compatibility_state` (`compatible`), `project_state` (`active`), Boolean
+`commit_pending`, `next_record_number`, the `records` map, and the `retired_paths`
+list. Optional top-level collections are `versions`, `events`, and `corrections`. A resolved
+view contains `record_id`, `revision`, `source_kind`, `round`, `current_path`,
+`history_path`, `part_ids`, `event_ids`, and `part_refs`; the working manifest
+record uses the same content fields without `record_id` or `source_kind` and
+adds `active_slot` and `commit_pending`.
+
 Top-level `versions` maps record ID and decimal revision string to a saved
 view. `events` maps record ID and event ID to its immutable entry; `corrections`
 is the registered relation list. IDs are local to their record, so another
@@ -58,6 +67,8 @@ Schema 1 remains readable and validatable. Mutating it requires explicit
 and pending flags, and records `round.state: unknown`. It does not infer an
 ending or migrate external bindings. Unsupported schemas return
 `compatibility_hold`; malformed registrations return `invalid_manifest`.
+The old schema 1 writer rejects schema 2 in read-only `compatibility_hold`;
+upgrading package files alone neither migrates projects nor proves runtime use.
 
 ## Fixed Markdown contract
 
@@ -107,7 +118,7 @@ bic.py apply --project PROJECT [--record-id ID] --expected-revision N \
   --history-draft PROJECT/.tmp/history.md \
   [--update-draft PROJECT/.tmp/update.json]
 bic.py read --project PROJECT --record-id ID (--current | --revision N) \
-  [--event EVENT_ID ...]
+  [--event EVENT_ID] ...
 bic.py save-version --project PROJECT --record-id ID --revision N
 bic.py bind --project PROJECT --session-id SESSION --record-id ID \
   --expected-revision N

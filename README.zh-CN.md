@@ -41,7 +41,7 @@ BIC 将信息分为三层：
 | 当前意图 | `current.md` | 当前有效的目标、决定、禁止项、理由、验证方式、边界条件和开放问题 |
 | 意图历史 | `history.md` | 已拒绝或已被替代的方向、原因、关键转折和重要反例 |
 
-每一条 intent record 都包含两个 Markdown 文件和两张同步更新的 Mermaid 图：
+普通 intent record 有一对活动 Markdown 正文和两张同步更新的 Mermaid 图：
 
 - `current.md` 包含 **Current Intent Map**；
 - `history.md` 包含 **Evolution Map**。
@@ -200,6 +200,25 @@ BIC 处于 armed 状态时，只有 root controller 识别并应用了第一项�
 `valid / commit_pending`。第一次创建还会显示一次两个精确路径；后续 revision 除非用户
 要求或正在 handoff，否则不重复整份 record。
 
+## 一个结果对应一轮讨论
+
+一个 record ID 跟随一个可以交付并结束的讨论结果，不对应整个产品、Codex 任务、主题词或
+文件长度。同一结果的细化保持原 ID；跨任务延续时需要交接写入归属。独立结果在发生自己的
+语义事件后使用新 ID，这不会使旧轮自动结束。
+
+标记 completed 前，root 必须明确询问：本轮约定的问题是否已经得到充分回答，是否确认
+结果可以交付并结束本轮；随后取得用户肯定答复。局部批准、感谢、沉默、切换任务、已有 spec
+或 revision 数量都不能替代这个确认。纯讨论结果也可以结束，不必生成 spec 或 plan。
+
+`end` 更新把结束确认记为新 revision，并在同一次发布中保存该版原文。结束不授予后继工作
+权限。BIC 尚未结束时，原生 spec 起草和审阅也可以继续；若原生批准与结束针对同一完整结果，
+可在一个问题中明确请求两者。
+
+暂停保留未完成结果；取消和替代各自记录真实状态，替代还记录后继关系。没有后续活动不代表
+任何一种状态。下游阅读或实施不会重开轮次；若执行偏离未改变的已批准设计，修复执行即可。
+只有已结束承诺出现具体实质缺陷时才有限重开，指出原承诺与受影响范围，保留已确认版本和
+未受影响结论，并在修订后再次取得结束确认。
+
 ## 项目内的记录结构
 
 第一次成功写入后，项目中会创建：
@@ -207,18 +226,24 @@ BIC 处于 armed 状态时，只有 root controller 识别并应用了第一项�
 ```text
 .brainstorming-intent/
 ├── manifest.json
-└── records/
-    └── BIC-0001/
-        ├── current.md
-        └── history.md
+└── records/BIC-0001/slots/a/
+    ├── current.md
+    └── history.md
 ```
 
-`manifest.json` 负责记录稳定的 record ID、revision、兼容状态和待处理的 Git 状态。它不
-保存聊天 transcript。
+`manifest.json` 选择活动正文，并记录稳定 ID、revision、轮次事实、已保存版本、登记的
+附属正文与订正，以及待处理的 Git 状态。它不保存聊天 transcript。后续更新至多轮换 `a`、
+`b` 两组工作 slot；非活动 slot 不是已经保存的历史版本。
 
-一条 intent lineage 对应一个已经接受的目标及其约束。这个目标的要求、例子和后续细化继续
-保存在同一条 lineage 中。只有独立的新目标在发生自己的承重语义事件后，才开始新的
-lineage。
+仅在需要时才增加：`versions/BIC-0001/rN/` 保存 current/history 原文及版本描述，
+`parts/BIC-0001/DIGEST.md` 保存历史分卷或有效主题，`session-bindings.json` 保存会话
+关联。普通 revision 不逐版复制，也不预建空存档索引。writer 在项目锁内通过 manifest
+发布一个完整 revision；reader 在共享锁内取得同版身份和正文。
+
+所有生成的草稿、临时输出、记录、附属正文、保存版本和绑定，都属于使用 BIC 的项目。
+生成文件前声明位置，临时工作使用该项目的 `.tmp/`，并把边界传递给获准使用的代理和工具。
+路径解析后也必须位于项目内。固定 Markdown 结构、完整 CLI 与 JSON 契约见
+[record-format.md](plugins/brainstorming-intent-continuity/skills/brainstorming-intent-continuity/references/record-format.md)。
 
 ## 两个文件、两张图
 
@@ -281,16 +306,74 @@ BIC 不要求 Brainstorming 最终产出 design spec、implementation plan 或�
 record 就可以继续更新；未来的新任务也可以通过精确 pointer 恢复它，或者直接把它作为当前
 意图的可读权威。
 
-如果后来确实进入下游工作，handoff 会包含稳定的 record ID、revision 和精确路径：
+当某个具体 revision 成为需要持久引用的 spec 或 handoff 输入时，使用 `save-version`
+保存正文原文及必要主题/历史依赖；相同已保存版直接复用。这不增加语义 revision，也不结束
+轮次。同一上下文中的持续阅读不产生新副本；`end` 更新自动保存新的已确认版本。
+
+handoff 包含项目、稳定 ID、revision 和实际返回路径，并说明请求的是当前有效内容还是
+某个已保存原版。以下是成功保存后的示例：
 
 ```text
-BIC pointer: BIC-0001 rev 3
-current: <project>/.brainstorming-intent/records/BIC-0001/current.md
-history: <project>/.brainstorming-intent/records/BIC-0001/history.md
+BIC saved pointer: <project> | BIC-0001 rev 3
+current: <project>/.brainstorming-intent/versions/BIC-0001/r3/current.md
+history: <project>/.brainstorming-intent/versions/BIC-0001/r3/history.md
 ```
 
-spec、plan、task brief、implementer 或 reviewer 只需要映射与自己工作相关的决定，不应以
-复制整段 transcript 代替这份权威。
+使用成功 apply/保存返回的路径，不能猜测路径，也不能用新交接摘要替代原文。保存版本保留
+当时依据，不覆盖后来的用户权威，也不会自动更新或重新批准旧 spec。
+
+## 补充同一份原生 spec
+
+BIC 已 armed、已关联且原生 Brainstorming 需要 spec 时，在同一次原生设计和审阅中取得并
+实际考虑对应 current/history 或保存版本；上下文里已经取得的准确版本可以复用。spec
+仍综合当前对话、项目事实、适用要求、原生探索与取舍，以及 BIC 补充资料。有效用户约束
+保持效力；已拒绝方向保持历史身份。
+
+把有关要求自然写入原生 spec，必要时附精确引用。在已有原生审阅交接中提供 BIC pointer
+和阅读说明，发现遗漏就在同一份 spec 中修正。单独放链接不等于表达要求。BIC 不建立第二份
+spec、指定 BIC 标题、额外 review report 或第二套批准流程。Superpowers 文件、方法、能力、
+调用、顺序和审批要求保持不变。原生 writing-plans 使用同一份 spec，不要求每个下游读者
+重读完整记录。普通未用 BIC 的任务照常进行；原本不需要 spec 或 plan 的路径不会因此增加。
+
+约定输入不可用时，指出准确缺失的项目、记录、revision 或文件，从其显式原始来源或已知准确
+副本恢复。上下文中已有的完整准确版本可以满足输入要求；新版、摘要或重建不能冒充原版。
+不猜测其他关联，也不在没有新线索时重复已穷尽的搜索；读取旧内容时携带已登记的后续订正。
+若无法恢复且尚无涵盖本次事件的决定，说明缺项及其影响无法完全确定，并询问用户是否接受
+本次缺少该输入继续。等待答复时推进独立工作，保留依赖该输入的义务，不宣称已完成约定的
+补充使用。用户接受缺项只覆盖本次事件；不能因为可见对话看似充分就判定未读资料可以跳过。
+
+## 读取、保存与关联输入
+
+从运行时提供的 Skill 路径解析 `BIC_SKILL_DIR`，不要假设目标项目含有插件源码。把示例的
+项目、record、revision、session 替换为准确已知值。以下示例假设项目已经使用 schema 2，
+且 `BIC-0001` 当前为 revision 3：
+
+```bash
+BIC_SKILL_MD="/absolute/path/supplied-by-the-runtime/SKILL.md"
+BIC_SKILL_DIR="$(cd "$(dirname "$BIC_SKILL_MD")" && pwd -P)"
+BIC_PROJECT="/absolute/path/to/your-project"
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" read --project "$BIC_PROJECT" --record-id BIC-0001 --current
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" save-version --project "$BIC_PROJECT" --record-id BIC-0001 --revision 3
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" read --project "$BIC_PROJECT" --record-id BIC-0001 --revision 3
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" bind --project "$BIC_PROJECT" --session-id SESSION --record-id BIC-0001 --expected-revision 3
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" bind --project "$BIC_PROJECT" --session-id SESSION --lookup
+```
+
+`read --current` 返回实际有效版。`read --revision N` 优先读取保存版；若没有保存但恰好是
+当前版，则返回 `source_kind: current`，其可变路径不能作为持久引用。不可用的旧版返回
+`version_unavailable`，不会替换为较新版。
+
+设置 binding 会保存预期的**当前 revision**，把准确保存路径登记在项目内的
+`.brainstorming-intent/session-bindings.json`。若当前版已推进，使用旧 expected revision
+设置绑定会返回 `revision_conflict`。已有 binding lookup 和 `read --revision N` 仍能
+读取已保存旧版。lookup 只读，不会 armed，也不授予语义写入归属。
+
+少见的长轮次可以按完整历史事件分卷，保留说明范围、条件和位置的稳定入口。先去重有效内容，
+仍有需要时再按实际主题分组；current 保留全局约束及覆盖全部有效主题的导航。有效主题正文
+仍是要求。字节数和 revision 数均不触发结束或换 ID。普通 read 返回有效主题与历史导航，
+不展开全部存档。在任一 read 模式添加 `--event E1`，可读取有关旧事件及其已登记后续订正，
+通过 original/view/source revision 区分时间。入口不足以判断相关性时扩展读取关联历史。
+保留原事件，区分后来替代与 `recording_error`；离线旧文件不能证明不存在后续订正。
 
 ## 更新和冲突处理
 
@@ -301,6 +384,24 @@ closed，controller 必须重新读取当前权威；它不会静默覆盖更新
 
 遇到不受支持的 schema 版本时，BIC 会进入只读的 compatibility hold，而不是静默迁移。
 
+### 显式迁移 schema 1
+
+Unreleased writer 可以只读查看和验证 schema 1。写入该项目旧记录前，应取得该项目的迁移
+权限，再使用上面的运行时 helper/项目变量执行：
+
+```bash
+python3 "${BIC_SKILL_DIR}/scripts/bic.py" migrate --project "$BIC_PROJECT" --expected-schema 1
+```
+
+迁移保留 record ID、revision、current/history 原文字节和 pending 标志。结束状态记为
+`unknown`，不推断完成，也不捏造未保存的历史版本。原内容进入 schema 2 工作结构，使用
+返回的新路径。旧 schema 1 writer 遇到 schema 2 会只读 `compatibility_hold`，不能再让
+旧 writer 更新已经迁移的项目。
+
+旧 `bind --plugin-data ...` 调用返回 `binding_migration_required` 和项目内命令说明，
+不会静默读取、移动或改写旧外部 binding 文件。重新关联需明确项目、session、record 和
+预期当前 revision；不遍历或迁移其他项目。
+
 ## Git 行为
 
 应用记录更新时不会自动调用 Git。
@@ -309,8 +410,9 @@ closed，controller 必须重新读取当前权威；它不会静默覆盖更新
 持久化记录可能暂时作为项目自有的 working-tree changes 保留。
 
 只有在已经获得明确 commit 授权后，才能使用 `commit-snapshot` 创建完整 registry
-snapshot。该操作会一起处理 manifest 和所有已登记的 lineage，同时保留无关的 staged 或
-modified 文件。
+snapshot。该操作一起处理 manifest、全部活动记录、保存版 descriptor 及其依赖、订正正文，
+同时保留无关 staged 或 modified 文件。非活动工作 slot、临时文件和 session runtime
+state 不进入快照。若完整快照未获授权，成功记录的结果保持 `commit_pending`。
 
 BIC 只报告 BIC 自己所管理路径的状态，绝不会据此声称整个 worktree 是干净的。
 
@@ -319,10 +421,10 @@ BIC 只报告 BIC 自己所管理路径的状态，绝不会据此声称整个 w
 BIC 会把选定的设计含义保存在使用它的项目中。这些记录可能包含该项目的信息，也可能根据
 项目自身规则在之后被 commit 或 push。公开仓库之前，请检查这些记录。
 
-可选的 session recovery 会在项目外的 plugin/runtime data 中写入
-`session-bindings.json`。它保存 session ID、项目/current/history 的绝对路径、record ID
-和 revision，但不保存设计正文或聊天 transcript。绝对路径可能暴露用户名或项目名，因此
-不要公开这个文件。
+可选 session recovery 在项目内写入 `.brainstorming-intent/session-bindings.json`。
+它保存 session ID、项目/保存正文的绝对路径、record ID 和 revision，不保存设计正文或聊天
+transcript。BIC 快照排除这个运行状态文件；绝对路径仍可能暴露用户名或项目名，其他分享
+方式需要单独检查。
 
 本仓库只包含产品源码、package metadata、公开文档、虚构示例和测试，不包含用户
 transcript、项目记录、telemetry、hook 或网络服务。这里描述的是插件包本身，不代表 Codex
@@ -347,7 +449,8 @@ Markdown 权威。
 
 ## 兼容性
 
-版本 `0.1.4` 已在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI
+稳定发布仍为 `0.1.4`；上文的新 schema 2 与轮次行为属于 `Unreleased`，不代表已安装版本
+已经具备。发布版 `0.1.4` 曾在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI
 `0.149.1` 完成验证。确定性 writer 需要 Python `3.9+` 和 POSIX 文件锁。当前不支持
 原生 Windows；macOS 尚未经过实际验证。
 

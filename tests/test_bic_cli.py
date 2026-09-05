@@ -97,7 +97,9 @@ class BicCliTestCase(unittest.TestCase):
         subprocess.run(["git", "init", "-q", str(self.project)], check=True)
         self.scratch = self.project / ".tmp"
         self.scratch.mkdir()
-        self.env = dict(os.environ, TMPDIR=str(self.scratch), PYTHONDONTWRITEBYTECODE="1")
+        self.env = dict(os.environ, TMPDIR=str(self.scratch), PYTHONDONTWRITEBYTECODE="1",
+                        GIT_AUTHOR_NAME="BIC Fixture", GIT_AUTHOR_EMAIL="bic-fixture@example.invalid",
+                        GIT_COMMITTER_NAME="BIC Fixture", GIT_COMMITTER_EMAIL="bic-fixture@example.invalid")
         self.current_draft = self.scratch / "current-draft.md"
         self.history_draft = self.scratch / "history-draft.md"
         self.current_draft.write_text(CURRENT_DRAFT, encoding="utf-8")
@@ -373,16 +375,6 @@ class BicCliTestCase(unittest.TestCase):
         self.assertEqual(after, before)
 
     def configure_git_identity_and_baseline(self):
-        subprocess.run(
-            ["git", "config", "user.name", "BIC Test"],
-            cwd=self.project,
-            check=True,
-        )
-        subprocess.run(
-            ["git", "config", "user.email", "bic-test@example.invalid"],
-            cwd=self.project,
-            check=True,
-        )
         (self.project / "unrelated-staged.txt").write_text(
             "baseline staged\n", encoding="utf-8"
         )
@@ -393,6 +385,7 @@ class BicCliTestCase(unittest.TestCase):
         subprocess.run(
             ["git", "commit", "-q", "-m", "baseline"],
             cwd=self.project,
+            env=self.env,
             check=True,
         )
 
@@ -794,12 +787,12 @@ class BicCliTestCase(unittest.TestCase):
         second = self.assert_success(self.apply())
         self.assertEqual(first["record_id"], "BIC-0001")
         self.assertEqual(second["record_id"], "BIC-0002")
-        plugin_data = self.root / "plugin-data"
+        plugin_data = self.project / ".brainstorming-intent"
 
         ambiguous = self.run_cli(
             "bind",
-            "--plugin-data",
-            plugin_data,
+            "--project",
+            self.project,
             "--session-id",
             "session-1",
             "--project",
@@ -810,13 +803,13 @@ class BicCliTestCase(unittest.TestCase):
         self.assertNotEqual(ambiguous.returncode, 0)
         self.assertTrue(ambiguous.stdout, ambiguous.stderr)
         self.assertEqual(json.loads(ambiguous.stdout)["state"], "record_required")
-        self.assertFalse(plugin_data.exists())
+        self.assertFalse((plugin_data / "session-bindings.json").exists())
 
         bound = self.assert_success(
             self.run_cli(
                 "bind",
-                "--plugin-data",
-                plugin_data,
+                "--project",
+                self.project,
                 "--session-id",
                 "session-1",
                 "--project",
@@ -830,15 +823,15 @@ class BicCliTestCase(unittest.TestCase):
         self.assertEqual(bound["state"], "bound")
         binding_file = plugin_data / "session-bindings.json"
         self.assertTrue(binding_file.is_file())
-        self.assertFalse(
+        self.assertTrue(
             str(binding_file.resolve()).startswith(str(self.project.resolve()) + os.sep)
         )
 
         looked_up = self.assert_success(
             self.run_cli(
                 "bind",
-                "--plugin-data",
-                plugin_data,
+                "--project",
+                self.project,
                 "--session-id",
                 "session-1",
                 "--lookup",
@@ -849,8 +842,8 @@ class BicCliTestCase(unittest.TestCase):
         self.assertEqual(looked_up["project"], str(self.project.resolve()))
 
     def test_binding_lookup_fails_closed_when_the_session_entry_is_not_an_object(self):
-        plugin_data = self.root / "plugin-data"
-        plugin_data.mkdir()
+        plugin_data = self.project / ".brainstorming-intent"
+        plugin_data.mkdir(exist_ok=True)
         (plugin_data / "session-bindings.json").write_text(
             json.dumps(
                 {
@@ -863,8 +856,8 @@ class BicCliTestCase(unittest.TestCase):
 
         result = self.run_cli(
             "bind",
-            "--plugin-data",
-            plugin_data,
+            "--project",
+            self.project,
             "--session-id",
             "session-1",
             "--lookup",
@@ -879,8 +872,8 @@ class BicCliTestCase(unittest.TestCase):
         self.assertNotIn("Traceback", result.stderr)
 
     def test_binding_lookup_fails_closed_for_invalid_required_binding_fields(self):
-        plugin_data = self.root / "plugin-data"
-        plugin_data.mkdir()
+        plugin_data = self.project / ".brainstorming-intent"
+        plugin_data.mkdir(exist_ok=True)
         binding_file = plugin_data / "session-bindings.json"
         binding = {
             "project": str(self.project),
@@ -911,8 +904,8 @@ class BicCliTestCase(unittest.TestCase):
 
                 result = self.run_cli(
                     "bind",
-                    "--plugin-data",
-                    plugin_data,
+                    "--project",
+                    self.project,
                     "--session-id",
                     "session-1",
                     "--lookup",
@@ -929,8 +922,8 @@ class BicCliTestCase(unittest.TestCase):
     def assert_binding_lookup_failure(self, plugin_data, expected_state):
         result = self.run_cli(
             "bind",
-            "--plugin-data",
-            plugin_data,
+            "--project",
+            self.project,
             "--session-id",
             "session-1",
             "--lookup",
@@ -945,8 +938,8 @@ class BicCliTestCase(unittest.TestCase):
         self.assertNotIn("Traceback", result.stderr)
 
     def test_binding_lookup_rejects_invalid_binding_envelopes(self):
-        plugin_data = self.root / "plugin-data"
-        plugin_data.mkdir()
+        plugin_data = self.project / ".brainstorming-intent"
+        plugin_data.mkdir(exist_ok=True)
         binding_file = plugin_data / "session-bindings.json"
 
         for label, bindings in (
@@ -966,8 +959,8 @@ class BicCliTestCase(unittest.TestCase):
                 self.assert_binding_lookup_failure(plugin_data, "invalid_bindings")
 
     def test_binding_lookup_distinguishes_missing_and_null_session_entries(self):
-        plugin_data = self.root / "plugin-data"
-        plugin_data.mkdir()
+        plugin_data = self.project / ".brainstorming-intent"
+        plugin_data.mkdir(exist_ok=True)
         binding_file = plugin_data / "session-bindings.json"
 
         for label, sessions, expected_state in (
@@ -983,8 +976,8 @@ class BicCliTestCase(unittest.TestCase):
                 self.assert_binding_lookup_failure(plugin_data, expected_state)
 
     def test_binding_lookup_rejects_unsafe_or_noncanonical_project_paths(self):
-        plugin_data = self.root / "plugin-data"
-        plugin_data.mkdir()
+        plugin_data = self.project / ".brainstorming-intent"
+        plugin_data.mkdir(exist_ok=True)
         binding_file = plugin_data / "session-bindings.json"
         binding = {
             "project": str(self.project),
@@ -1014,8 +1007,8 @@ class BicCliTestCase(unittest.TestCase):
                 self.assert_binding_lookup_failure(plugin_data, "invalid_bindings")
 
     def test_binding_lookup_rejects_project_symlink_cycle(self):
-        plugin_data = self.root / "plugin-data"
-        plugin_data.mkdir()
+        plugin_data = self.project / ".brainstorming-intent"
+        plugin_data.mkdir(exist_ok=True)
         binding_file = plugin_data / "session-bindings.json"
         cycle = self.root / "project-cycle"
         cycle.symlink_to(cycle)
@@ -1033,14 +1026,14 @@ class BicCliTestCase(unittest.TestCase):
 
         self.assert_binding_lookup_failure(plugin_data, "invalid_bindings")
 
-    def test_binding_lookup_fails_closed_when_record_revision_is_stale(self):
+    def test_binding_lookup_keeps_saved_revision_after_current_advances(self):
         self.assert_success(self.apply())
-        plugin_data = self.root / "plugin-data"
+        plugin_data = self.project / ".brainstorming-intent"
         self.assert_success(
             self.run_cli(
                 "bind",
-                "--plugin-data",
-                plugin_data,
+                "--project",
+                self.project,
                 "--session-id",
                 "session-1",
                 "--project",
@@ -1057,28 +1050,28 @@ class BicCliTestCase(unittest.TestCase):
 
         result = self.run_cli(
             "bind",
-            "--plugin-data",
-            plugin_data,
+            "--project",
+            self.project,
             "--session-id",
             "session-1",
             "--lookup",
         )
 
-        self.assertNotEqual(result.returncode, 0)
-        self.assertTrue(result.stdout, result.stderr)
-        self.assertEqual(json.loads(result.stdout)["state"], "stale_binding")
+        pointer = self.assert_success(result)
+        self.assertEqual(pointer["revision"], 1)
+        self.assertIn("Revision: 1", Path(pointer["current_path"]).read_text())
         self.assertEqual(
             (binding_file.read_bytes(), binding_file.stat().st_mtime_ns), before
         )
 
     def test_binding_lookup_fails_closed_when_stored_record_paths_are_changed(self):
         self.assert_success(self.apply())
-        plugin_data = self.root / "plugin-data"
+        plugin_data = self.project / ".brainstorming-intent"
         self.assert_success(
             self.run_cli(
                 "bind",
-                "--plugin-data",
-                plugin_data,
+                "--project",
+                self.project,
                 "--session-id",
                 "session-1",
                 "--project",
@@ -1104,8 +1097,8 @@ class BicCliTestCase(unittest.TestCase):
 
                 result = self.run_cli(
                     "bind",
-                    "--plugin-data",
-                    plugin_data,
+                    "--project",
+                    self.project,
                     "--session-id",
                     "session-1",
                     "--lookup",
@@ -1115,7 +1108,7 @@ class BicCliTestCase(unittest.TestCase):
                 self.assertTrue(result.stdout, result.stderr)
                 self.assertEqual(json.loads(result.stdout)["state"], "stale_binding")
 
-    def test_binding_data_path_inside_project_is_rejected_without_writes(self):
+    def test_explicit_legacy_plugin_data_argument_reports_migration_without_writes(self):
         self.assert_success(self.apply())
         plugin_data = self.project / "forbidden-plugin-data"
 
@@ -1135,7 +1128,7 @@ class BicCliTestCase(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertTrue(result.stdout, result.stderr)
-        self.assertEqual(json.loads(result.stdout)["state"], "invalid_plugin_data")
+        self.assertEqual(json.loads(result.stdout)["state"], "binding_migration_required")
         self.assertFalse(plugin_data.exists())
 
     def test_unsupported_schema_holds_every_mutating_command_read_only(self):
@@ -1156,8 +1149,6 @@ class BicCliTestCase(unittest.TestCase):
             ("status", "--project", self.project),
             (
                 "bind",
-                "--plugin-data",
-                plugin_data,
                 "--session-id",
                 "session-1",
                 "--project",

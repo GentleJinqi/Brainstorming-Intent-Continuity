@@ -386,7 +386,7 @@ closed，controller 必须重新读取当前权威；它不会静默覆盖更新
 
 ### 显式迁移 schema 1
 
-Unreleased writer 可以只读查看和验证 schema 1。写入该项目旧记录前，应取得该项目的迁移
+`0.2.0` writer 可以只读查看和验证 schema 1。写入该项目旧记录前，应取得该项目的迁移
 权限，再使用上面的运行时 helper/项目变量执行：
 
 ```bash
@@ -449,10 +449,14 @@ Markdown 权威。
 
 ## 兼容性
 
-稳定发布仍为 `0.1.4`；上文的新 schema 2 与轮次行为属于 `Unreleased`，不代表已安装版本
-已经具备。发布版 `0.1.4` 曾在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI
-`0.149.1` 完成验证。确定性 writer 需要 Python `3.9+` 和 POSIX 文件锁。当前不支持
-原生 Windows；macOS 尚未经过实际验证。
+本 README 描述 `0.2.0`，包括 schema 2 与显式讨论轮次。本地源码准备不代表已经发布，
+也不会更新已安装插件。候选在 Python `3.9.18` 上通过了 84 项机械测试；实际模型测试使用
+Codex CLI/App Server `0.153.4` 与 `gpt-6-astra` 的 `ultra` 档位。观察结果及其限制记录于
+changelog。
+
+历史兼容性方面，发布版 `0.1.4` 曾在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI
+`0.149.1` 完成验证。确定性 writer 需要 Python `3.9+` 和 POSIX 文件锁。当前不支持原生
+Windows；macOS 尚未经过实际验证。
 
 发布说明请见 [CHANGELOG.md](CHANGELOG.md)，已发布版本请见
 [GitHub Releases](https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/releases)。

@@ -5,6 +5,8 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-06
+
 ### Added
 
 - Explicit round facts for one deliverable discussion result, whole-round ending
@@ -37,8 +39,23 @@ The project follows [Semantic Versioning](https://semver.org/).
 - Legacy `bind --plugin-data` returns `binding_migration_required`; rebind with
   an explicit project and expected current revision. Old external binding files
   remain unchanged. No automatic cross-project migration is performed.
-- Stable package and release metadata remains `0.1.4`; these Unreleased changes
-  are not included in that published release.
+
+### Validation
+
+- The behavioral candidate passed 84 mechanical tests before release preparation.
+  Actual `gpt-6-astra` / `ultra` runs covered two pairs of historical design
+  replays (native Brainstorming versus native Brainstorming with BIC) and four
+  controlled turns for corrections, explicit ending and unavailable versions.
+- Core intent and key corrections were retained in the sampled designs. The
+  candidate added reading and execution overhead: root-turn elapsed time rose
+  by about 11.4% and 45.2%, and non-cached input tokens by 45.3% and 32.1%, in
+  the two pairs. These are root-task measurements, not whole-agent totals or
+  billing figures.
+- Candidate runs also retrieved additional memory context, so the replays were
+  not strictly equal-input comparisons. The observations establish tested
+  behavior, not general quality improvement, efficiency gains, statistical
+  non-inferiority, or model-specific superiority. Long-term use, context
+  compaction benefits and an independent spec-reviewer handoff remain unproven.
 
 ## [0.1.4] - 2026-08-26
 
@@ -96,7 +113,8 @@ The project follows [Semantic Versioning](https://semver.org/).
   review.
 - A GitHub repository marketplace package and 19 deterministic writer tests.
 
-[Unreleased]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.1...v0.1.2

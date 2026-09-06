@@ -452,7 +452,7 @@ being migrated silently.
 
 ### Explicit schema 1 migration
 
-The Unreleased writer reads and validates schema 1 without changing it. Before
+The `0.2.0` writer reads and validates schema 1 without changing it. Before
 writing that project's old records, obtain project migration authority and run
 this command using the same runtime helper/project setup above:
 
@@ -531,12 +531,16 @@ or inaccurate.
 
 ## Compatibility
 
-The stable release remains `0.1.4`; the new schema 2 and round behavior described
-above belongs to `Unreleased`, not an installed-release claim. Release `0.1.4`
-was verified on Linux with Superpowers `6.3.0` and Codex
-CLI `0.149.1`. The deterministic writer requires Python `3.9+` and POSIX file
-locking. Native Windows is not currently supported; macOS has not yet been
-verified.
+This README describes `0.2.0`, including schema 2 and explicit discussion rounds.
+Local source preparation does not establish publication or update an installed
+plugin. The candidate passed 84 mechanical tests on Python `3.9.18`; actual
+model testing used Codex CLI/App Server `0.153.4` with `gpt-6-astra` at `ultra`.
+The observations and their limits are recorded in the changelog.
+
+For historical compatibility, release `0.1.4` was verified on Linux with
+Superpowers `6.3.0` and Codex CLI `0.149.1`. The deterministic writer requires
+Python `3.9+` and POSIX file locking. Native Windows is not currently supported;
+macOS has not yet been verified.
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes and
 [GitHub Releases](https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/releases)

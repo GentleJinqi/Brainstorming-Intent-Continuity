@@ -142,19 +142,20 @@ class PublicPackageContractTestCase(unittest.TestCase):
             normalized_chinese,
         )
 
-    def test_v014_release_metadata_and_documentation_links(self):
+    def test_v020_release_metadata_and_documentation_links(self):
         manifest = json.loads(
             (PLUGIN_ROOT / ".codex-plugin" / "plugin.json").read_text(
                 encoding="utf-8"
             )
         )
-        self.assertEqual(manifest["version"], "0.1.4")
+        self.assertEqual(manifest["version"], "0.2.0")
         self.assertIn(
             QUALIFIED_INVOCATION,
             "\n".join(manifest["interface"]["defaultPrompt"]),
         )
 
         changelog = (REPOSITORY_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        self.assertIn("## [0.2.0] - 2026-09-06", changelog)
         self.assertIn("## [0.1.4] - 2026-08-26", changelog)
         changelog_lower = changelog.lower()
         self.assertIn("fail closed", changelog_lower)
@@ -163,7 +164,7 @@ class PublicPackageContractTestCase(unittest.TestCase):
         for relative_path in ("README.md", "README.zh-CN.md"):
             with self.subTest(path=relative_path):
                 text = (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8")
-                self.assertIn("0.1.4", text)
+                self.assertIn("0.2.0", text)
                 self.assertIn("[CHANGELOG.md](CHANGELOG.md)", text)
                 self.assertIn(
                     "https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/releases",

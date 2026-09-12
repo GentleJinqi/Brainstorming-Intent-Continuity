@@ -27,8 +27,12 @@ payload (name, path, and body). A catalog entry, plugin toggle or listing, or
 prompt mention is not activation evidence:
 
 - If the runtime has supplied both this Skill and the structured
-  `superpowers:brainstorming` Skill, reply `BIC armed — explicit session mode;
-  no project record exists until a semantic event.`
+  `superpowers:brainstorming` Skill, the session is armed. With no semantic
+  event, reply `BIC armed — explicit session mode; no project record exists
+  until a semantic event.` If this activation turn also handles a semantic
+  event, give one combined activation/update receipt at the end, describing
+  the actual outcome and record state; do not first emit a separate armed
+  receipt or carry the no-record wording into an already-created record.
 - If this Skill is present but structured `superpowers:brainstorming` is
   absent, reply `BIC not armed — Superpowers Brainstorming was not structurally
   loaded; invoke $superpowers:brainstorming in the next turn.` Do not create,

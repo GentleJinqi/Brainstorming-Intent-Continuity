@@ -24,7 +24,7 @@ def documented_commands(path):
     """Read copyable CLI examples, excluding shell setup and syntax synopses."""
     text = path.read_text(encoding="utf-8").replace("\\\n", " ")
     commands = []
-    names = {"read", "save-version", "bind", "migrate"}
+    names = {"read", "save-version", "bind", "migrate", "validate"}
     for block in re.findall(r"```(?:bash|text)\n(.*?)```", text, re.S):
         for line in block.splitlines():
             words = shlex.split(line, comments=True)
@@ -42,7 +42,7 @@ class PublicCommandExamplesTestCase(unittest.TestCase):
                      REPOSITORY_ROOT / "README.zh-CN.md"):
             commands = documented_commands(path)
             with self.subTest(path=path.name):
-                self.assertTrue({"read", "save-version", "bind", "migrate"}
+                self.assertTrue({"read", "save-version", "bind", "migrate", "validate"}
                                 <= {command[0] for command in commands},
                                 "Missing copyable current/saved input and migration commands")
             for command in commands:
@@ -75,12 +75,19 @@ class PublicCommandExamplesTestCase(unittest.TestCase):
                 examples.sort(key=lambda command: command[0] != "migrate")
                 results = []
                 for command in examples:
-                    argv = [str(project) if word == "$BIC_PROJECT" else word for word in command]
+                    substitutions = {"$BIC_PROJECT": str(project), "PROJECT": str(project),
+                                     "ID": "BIC-0001", "N": "3"}
+                    argv = [substitutions.get(word, word) for word in command]
                     result = subprocess.run([sys.executable, str(SKILL_ROOT / "scripts/bic.py"), *argv],
                                             capture_output=True, text=True, env=env)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     results.append((argv, json.loads(result.stdout)))
                 reads = [value for argv, value in results if argv[0] == "read"]
+                validations = [value for argv, value in results if argv[0] == "validate"]
+                self.assertEqual(len(validations), 1)
+                self.assertEqual(validations[0]["validation_scope"], "current")
+                self.assertEqual(validations[0]["record_id"], "BIC-0001")
+                self.assertEqual(validations[0]["revision"], 3)
                 self.assertEqual({value["source_kind"] for value in reads}, {"current", "saved"})
                 for value in reads:
                     self.assertEqual(value["revision"], 3)
@@ -178,7 +185,7 @@ class PublicPackageContractTestCase(unittest.TestCase):
                 self.assertIn('L --> E0', text)
                 self.assertNotIn('L --> D', text)
 
-    def test_partial_activation_stops_and_recovery_is_forward_only(self):
+    def test_partial_activation_requires_evidence_and_recovery_is_forward_only(self):
         skill = (
             PLUGIN_ROOT
             / "skills"
@@ -187,7 +194,6 @@ class PublicPackageContractTestCase(unittest.TestCase):
         ).read_text(encoding="utf-8")
         normalized_skill = " ".join(skill.split())
         self.assertIn("full runtime `<skill>` payload", normalized_skill)
-        self.assertIn("End the turn immediately", normalized_skill)
         self.assertIn("forward-only", normalized_skill)
         self.assertIn("controlled bootstrap", normalized_skill)
 

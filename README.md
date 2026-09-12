@@ -145,10 +145,13 @@ That receipt is valid only when Codex has structurally loaded both Skills. If
 Codex loads BIC but omits Superpowers Brainstorming, BIC fails closed and asks
 you to invoke `$superpowers:brainstorming` in the next turn. If no BIC receipt
 appears, invoke the plugin-qualified BIC Skill in the next turn. Neither retry
-creates project state; continue only after the armed receipt appears.
+creates project state; resume activation-dependent work only after the armed
+receipt appears.
 
-A partial-activation turn ends with the fail-closed receipt. Once the missing
-Skill is loaded, continuity is forward-only from that turn. To recover meaning
+A partial activation pauses dependent Brainstorming/BIC work and leaves its
+semantic content unrecorded. Independent authorized work can continue in the
+same turn. Once the missing Skill is loaded, continuity is forward-only from
+that turn. To recover meaning
 from an older task or the partial turn, first present a brief controlled
 bootstrap reconstruction and apply it only after the user explicitly confirms
 it; never treat task history as an automatic backfill source.
@@ -177,7 +180,8 @@ It is not a separate service or an automatic semantic-event detector.
 flowchart TD
     A["Start a root Superpowers Brainstorming task"] --> B["Invoke both Skills once"]
     B --> C{"Both structured Skills loaded?"}
-    C -->|"No"| C0["BIC not armed: end this turn"]
+    C -->|"No"| C0["BIC not armed: pause dependent work"]
+    C0 --> C2["Continue independent authorized work"]
     C0 --> C1["Invoke the missing Skill next turn"]
     C1 --> C
     C -->|"Yes"| D["BIC armed: no project write"]
@@ -380,8 +384,11 @@ Express relevant requirements naturally in the native spec, with exact reference
 where useful. Include the BIC pointer and reading instruction in the existing
 native review handoff, and repair omissions in that same spec. A link alone
 does not express a requirement. BIC creates no second spec, required BIC headings,
-extra review report, or second approval flow. Superpowers files, methods,
-capabilities, invocation, ordering and approvals remain unchanged. Native
+extra review report, or second approval flow. Superpowers Skill files remain
+unchanged. BIC supplies input to the existing native workflow; its methods and
+approvals remain subject to current user, project and runtime authority. BIC
+adds no stages or approvals and does not require an already authorized step to
+be approved again. Native
 writing-plans consumes the same spec; every downstream reader need not reread
 the full record. Ordinary tasks without BIC continue normally, and paths that
 need no spec or plan gain none.
@@ -397,6 +404,27 @@ particular input. Continue independent work while awaiting that answer, keep the
 dependent obligation open, and do not claim the agreed supplement was used.
 An accepted omission applies only to that incident; visible conversation alone
 does not establish that unread material is dispensable.
+
+## Validate a published revision
+
+After `apply`, use its returned record ID and revision for a focused persisted
+result check:
+
+```text
+validate --project PROJECT --record-id ID --current-only --expected-revision N
+```
+
+Both the ID and expected revision are required. The command rejects an advanced
+revision and checks the current bodies, registered parts and corrections, plus
+the saved copy of this same revision when one exists. It leaves unrelated older
+saved versions and other records' bodies unread. Manifest metadata still receives
+its shared integrity checks. The receipt states `validation_scope: current`;
+it does not certify the whole registry.
+
+`validate --project PROJECT [--record-id ID]` retains the full integrity audit,
+including saved versions, and `commit-snapshot` still validates the complete
+registered snapshot. A failure in unrelated historical material is reported in
+that scope; it does not by itself invalidate a separately verified current result.
 
 ## Read, preserve, and associate an input
 

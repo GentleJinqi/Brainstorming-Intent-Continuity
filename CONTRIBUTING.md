@@ -49,8 +49,9 @@ add an entry under `Unreleased` in `CHANGELOG.md`.
 
 ## 中文贡献说明
 
-保持 BIC 作为原生 Superpowers Brainstorming 的 companion，不复制或修改原生 Skill、调用
-方式、阶段顺序或审批要求。公开 issue、fixture 和 PR 不得包含真实聊天、项目记录、私人
+保持 BIC 作为原生 Superpowers Brainstorming 的 companion，不复制或修改原生 Skill 文件，
+也不增加独立阶段或审批；原生方法的使用服从当前用户、项目和运行环境权威。
+公开 issue、fixture 和 PR 不得包含真实聊天、项目记录、私人
 绝对路径、凭据或用户活动资料。
 
 在仓库根目录运行测试，所有夹具、草稿、日志和工具临时输出都放在所属项目内，通常为

@@ -112,6 +112,7 @@ one object with `ok: false`, a machine-readable `state`, and `error`, and exit
 ```text
 bic.py status --project PROJECT
 bic.py validate --project PROJECT [--record-id ID]
+bic.py validate --project PROJECT --record-id ID --current-only --expected-revision N
 bic.py migrate --project PROJECT --expected-schema 1
 bic.py apply --project PROJECT [--record-id ID] --expected-revision N \
   --current-draft PROJECT/.tmp/current.md \
@@ -133,6 +134,22 @@ mismatch before publication. IDs run from `BIC-0001` through `BIC-9999`;
 `next_record_number: 10000` is valid exhausted state and a new allocation returns
 `record_id_exhausted`. Apply reports `commit_pending`, ID, new revision, and
 actual current/history paths. It never invokes Git.
+
+After apply, `validate --current-only` checks the returned record and exact
+expected current revision under one shared lock. Both `--record-id` and
+`--expected-revision` are required; an advanced revision returns
+`revision_conflict`. The check covers persisted current/history, all current
+part references and that record's corrections, and the saved view of this same
+revision when registered. Other record bodies and unrelated older saved views
+are excluded. Manifest metadata validation is unchanged. The JSON receipt
+includes `validation_scope: current` and the exact record/revision/paths.
+
+Without `--current-only`, validation retains the full selected-record or
+registry audit and its existing JSON receipt unchanged. `--expected-revision`
+is only accepted with `--current-only`; incomplete combinations return
+`invalid_arguments`. Complete-registry snapshots retain their existing full
+dependency checks. An unrelated historical failure in a full audit is not by
+itself evidence that a separately validated current revision failed.
 
 `read` returns `record_id`, `revision`, `source_kind`, `round`, `current`,
 `history`, `parts`, `corrections`, `events`, and `part_index`. A body is

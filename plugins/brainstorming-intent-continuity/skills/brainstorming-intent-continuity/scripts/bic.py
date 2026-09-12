@@ -492,7 +492,7 @@ def _read_view_documents(project, view):
     return documents
 
 
-def validate_record(project, manifest, record_id, *, complete=True):
+def validate_record(project, manifest, record_id, *, complete=True, current_only=False):
     view = _resolve_record_view_locked(manifest, record_id)
     if manifest["schema_version"] == 1:
         record_directory = project_file(project, f"{STATE_DIRECTORY}/records/{record_id}")
@@ -506,6 +506,8 @@ def validate_record(project, manifest, record_id, *, complete=True):
         for part in view.get("part_refs", {}).values():
             _read_part(project, part)
         for saved in manifest.get("versions", {}).get(record_id, {}).values():
+            if current_only and saved["revision"] != view["revision"]:
+                continue
             _verify_saved_version(project, saved)
             _read_view_documents(project, saved)
         for correction in manifest.get("corrections", []):
@@ -1116,15 +1118,29 @@ def command_migrate(arguments):
 
 
 def command_validate(arguments):
+    if arguments.current_only:
+        if not arguments.record_id or arguments.expected_revision is None:
+            raise BicError("invalid_arguments", "--current-only requires --record-id and --expected-revision")
+    elif arguments.expected_revision is not None:
+        raise BicError("invalid_arguments", "--expected-revision requires --current-only")
     project = project_path(arguments.project)
     with project_lock(project, exclusive=False):
         manifest = load_manifest(project)
         if manifest is None:
             raise BicError("not_enrolled", "project has no BIC manifest")
+        if arguments.current_only:
+            # Compare the live view under the same lock as its body validation;
+            # resolving the requested revision could instead select an old save.
+            view = _resolve_record_view_locked(manifest, arguments.record_id)
+            if arguments.expected_revision != view["revision"]:
+                raise BicError("revision_conflict",
+                               f"expected revision {arguments.expected_revision}, found {view['revision']}")
         record_ids = [arguments.record_id] if arguments.record_id else sorted(manifest["records"])
         for record_id in record_ids:
-            validate_record(project, manifest, record_id)
+            validate_record(project, manifest, record_id, current_only=arguments.current_only)
         payload = {"ok": True, "state": "valid", "records": record_ids}
+        if arguments.current_only:
+            payload["validation_scope"] = "current"
         if arguments.record_id:
             view = _resolve_record_view_locked(manifest, arguments.record_id)
             payload.update({"record_id": arguments.record_id, "revision": view["revision"],
@@ -1310,6 +1326,9 @@ def build_parser():
     validate_parser = subparsers.add_parser("validate")
     validate_parser.add_argument("--project", required=True)
     validate_parser.add_argument("--record-id")
+    validate_parser.add_argument("--current-only", action="store_true",
+                                 help="validate only the exact current revision and its dependencies")
+    validate_parser.add_argument("--expected-revision", type=int)
     validate_parser.set_defaults(handler=command_validate)
 
     read_parser = subparsers.add_parser("read")

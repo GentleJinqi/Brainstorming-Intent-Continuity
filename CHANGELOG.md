@@ -5,6 +5,22 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Focused post-apply validation with `--current-only`, an explicit record ID and
+  expected revision, and a scope-bearing receipt. It checks current dependencies
+  without auditing unrelated records or older saved versions. Existing full
+  validation and complete-registry snapshot checks are preserved.
+
+### Changed
+
+- Partial activation pauses dependent Brainstorming/BIC work while independent
+  authorized work continues. Structural loading evidence, forward-only recovery
+  and controlled-bootstrap confirmation remain required.
+- Clarify that BIC supplies input to the existing native workflow under current
+  user, project and runtime authority, without adding stages or repeat approvals.
+
+
 ## [0.2.0] - 2026-09-06
 
 ### Added

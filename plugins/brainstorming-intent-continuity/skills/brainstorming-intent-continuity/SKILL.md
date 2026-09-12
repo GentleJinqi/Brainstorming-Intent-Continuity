@@ -32,8 +32,9 @@ prompt mention is not activation evidence:
 - If this Skill is present but structured `superpowers:brainstorming` is
   absent, reply `BIC not armed — Superpowers Brainstorming was not structurally
   loaded; invoke $superpowers:brainstorming in the next turn.` Do not create,
-  update, or bind a record. End the turn immediately after that receipt; do not
-  continue Brainstorming or interpret semantic content from the partial turn.
+  update, or bind a record. Pause the Brainstorming/BIC work that depends on
+  activation; do not interpret its partial-turn semantic content. Continue
+  authorized work that is independent of activation in the same turn.
   Once that Skill is structurally supplied in the same task, give the armed
   receipt without creating project state. Continuity is forward-only from that
   turn. Do not backfill pre-activation or partial-turn content unless the user
@@ -187,13 +188,21 @@ The root authors current/history drafts and any structured update draft inside
 the project, then calls `apply` with the exact expected revision. Use
 `--update-draft PROJECT/.tmp/update.json` for the structured update described in
 record-format. For a new round omit `--record-id` and use expected revision 0;
-for an update provide the stable ID and current revision. Run
-`validate --project PROJECT` after apply. A revision mismatch fails closed:
-re-read the affected authority, never last-write-wins or invent a replacement.
+for an update provide the stable ID and current revision. After apply, validate
+its returned ID and revision with
+`validate --project PROJECT --record-id ID --current-only --expected-revision N`.
+This checks that exact current revision and its necessary dependencies; it does
+not audit other records or unrelated saved versions. Use full `validate` when
+that broader integrity claim is needed; complete snapshots retain full validation.
+A revision mismatch fails closed: re-read the affected authority, never
+last-write-wins or invent a replacement. A failed broader audit does not by itself
+invalidate an independently verified current revision; report the affected scope
+and keep any work depending on the failed material unresolved.
 
 All commands below use `python3 "${BIC_SKILL_DIR}/scripts/bic.py"`:
 
 ```text
+validate --project PROJECT --record-id ID --current-only --expected-revision N
 read --project PROJECT --record-id BIC-xxxx --current
 read --project PROJECT --record-id BIC-xxxx --revision N
 read --project PROJECT --record-id BIC-xxxx --revision N --event EVENT
@@ -215,7 +224,7 @@ After a successful apply and validation, use this compact receipt in the
 user's language:
 
 ```text
-BIC updated — BIC-0007 rev 3 | Delta: <only the semantic change> | state: valid / commit_pending
+BIC updated — BIC-0007 rev 3 | Delta: <only the semantic change> | validation: current revision + dependencies | state: commit_pending
 ```
 
 On creation, add the returned current/history paths once. Later, repeat paths
@@ -284,10 +293,13 @@ express a requirement, and BIC headings do not dictate the spec's structure.
 When the native review passes materials to another reader, include the exact
 BIC pointer and reading instruction in that existing handoff. Repair actual
 omissions or distortions in the same spec. Do not create a parallel BIC spec,
-BIC review report, or second approval flow. Leave native Skill files, methods,
-capabilities, invocation, stage order, and approvals unchanged. Native
-writing-plans consumes the same spec; do not require every plan to reread the
-whole BIC record. Native paths that need no spec or plan gain none from BIC;
+BIC review report, or second approval flow. Do not modify native Skill files.
+Supply BIC input to the existing native workflow; its methods and approvals
+remain subject to current user, project, and runtime authority. BIC adds no
+stages or approvals and does not require an already authorized step to be
+approved again. Native writing-plans consumes the same spec; do not require
+every plan to reread the whole BIC record. Native paths that need no spec or
+plan gain none from BIC;
 tasks without BIC continue normally.
 
 Update the BIC record before dependent work when authorized user meaning

@@ -133,9 +133,10 @@ BIC armed — explicit session mode; no project record exists until a semantic e
 只有 Codex 已经结构化加载了两个 Skill，这条回执才成立。如果 Codex 已加载 BIC、但遗漏了
 Superpowers Brainstorming，BIC 会 fail closed，并要求您在下一 turn 单独调用
 `$superpowers:brainstorming`。如果完全没有出现 BIC 回执，则在下一 turn 单独调用插件限定名
-BIC Skill。这两种重试都不会创建项目状态；只有出现 armed 回执后才继续。
+BIC Skill。这两种重试都不会创建项目状态；依赖激活的工作只有在出现 armed 回执后才继续。
 
-partial activation 所在的 turn 会在 fail-closed 回执后立即结束。缺失的 Skill 加载成功后，
+partial activation 只暂停依赖激活的 Brainstorming/BIC 工作，不吸收该阶段的语义内容；
+同一 turn 中不依赖激活的已授权工作可以继续。缺失的 Skill 加载成功后，
 连续性默认从该 turn 开始，采用 forward-only。若要恢复旧任务或 partial turn 中的含义，先
 给出一份简短的 controlled bootstrap 重建，并且只有在用户明确确认后才能写入；不得把任务
 历史自动当成回填来源。
@@ -158,7 +159,8 @@ Task history 与 BIC 默认值之上的 handoff ownership；BIC 不得覆盖该�
 flowchart TD
     A["开始根 Superpowers Brainstorming 任务"] --> B["显式调用两个 Skill 一次"]
     B --> C{"两个结构化 Skill 都已加载？"}
-    C -->|"否"| C0["BIC 未 armed：结束当前 turn"]
+    C -->|"否"| C0["BIC 未 armed：暂停依赖激活的工作"]
+    C0 --> C2["继续独立的已授权工作"]
     C0 --> C1["下一 turn 补调用缺失的 Skill"]
     C1 --> C
     C -->|"是"| D["BIC 已 armed：尚不写入项目"]
@@ -331,8 +333,9 @@ BIC 已 armed、已关联且原生 Brainstorming 需要 spec 时，在同一次�
 
 把有关要求自然写入原生 spec，必要时附精确引用。在已有原生审阅交接中提供 BIC pointer
 和阅读说明，发现遗漏就在同一份 spec 中修正。单独放链接不等于表达要求。BIC 不建立第二份
-spec、指定 BIC 标题、额外 review report 或第二套批准流程。Superpowers 文件、方法、能力、
-调用、顺序和审批要求保持不变。原生 writing-plans 使用同一份 spec，不要求每个下游读者
+spec、指定 BIC 标题、额外 review report 或第二套批准流程。Superpowers Skill 文件保持
+不变；BIC 向既有原生流程提供输入，其方法与审批服从当前用户、项目和运行环境的权威。
+BIC 不增加阶段或审批，也不要求对已授权步骤重复批准。原生 writing-plans 使用同一份 spec，不要求每个下游读者
 重读完整记录。普通未用 BIC 的任务照常进行；原本不需要 spec 或 plan 的路径不会因此增加。
 
 约定输入不可用时，指出准确缺失的项目、记录、revision 或文件，从其显式原始来源或已知准确
@@ -341,6 +344,23 @@ spec、指定 BIC 标题、额外 review report 或第二套批准流程。Super
 若无法恢复且尚无涵盖本次事件的决定，说明缺项及其影响无法完全确定，并询问用户是否接受
 本次缺少该输入继续。等待答复时推进独立工作，保留依赖该输入的义务，不宣称已完成约定的
 补充使用。用户接受缺项只覆盖本次事件；不能因为可见对话看似充分就判定未读资料可以跳过。
+
+## 验证已发布的 revision
+
+`apply` 成功后，使用它返回的 record ID 和 revision 检查实际落盘结果：
+
+```text
+validate --project PROJECT --record-id ID --current-only --expected-revision N
+```
+
+ID 和 expected revision 均为必填。若当前 revision 已推进，命令拒绝替换成新版进行验证。
+检查覆盖当前正文、已登记的 part 与订正，以及存在时同一 revision 的保存副本；不读取无关
+旧保存版本或其他记录的正文。manifest 元数据仍接受共享完整性检查。回执明确标注
+`validation_scope: current`，不宣称整个 registry 已通过。
+
+`validate --project PROJECT [--record-id ID]` 保留包含保存版本的完整性审计；
+`commit-snapshot` 仍验证完整登记快照。无关历史材料的失败按其实际范围报告，不能单凭
+该失败否定另行验证通过的当前结果。
 
 ## 读取、保存与关联输入
 

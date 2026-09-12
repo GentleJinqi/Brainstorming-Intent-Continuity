@@ -6,6 +6,19 @@ responsible for meaning and genuine user approval. The tool renders identity
 placeholders and managed navigation; it does not classify conversation, choose
 accepted requirements, decide when to end, or add Mermaid nodes.
 
+## Read for the current operation
+
+Use only the contract relevant to the work; already available content need not
+be read again. Ordinary drafts use [fixed Markdown](#fixed-markdown-contract)
+and the applicable apply/read/validate portions of [CLI and JSON](#cli-and-json).
+For lifecycle changes or saving a version, use
+[lifecycle and preservation](#lifecycle-updates-and-preservation); for grouping
+or corrections, use [parts](#parts-navigation-and-corrections). Binding and full
+Git snapshots use [their contract](#project-local-binding-and-full-registry-snapshots).
+Inspect [layout and schema](#project-layout-and-publication) for storage or
+migration work, and [helper internals](#helper-lock-and-path-contracts) only when
+working on that implementation.
+
 ## Project layout and publication
 
 State is created lazily by the first successful `apply`. All drafts, temporary

@@ -184,7 +184,7 @@ flowchart TD
     C0 --> C2["Continue independent authorized work"]
     C0 --> C1["Invoke the missing Skill next turn"]
     C1 --> C
-    C -->|"Yes"| D["BIC armed: no project write"]
+    C -->|"Yes"| D["BIC armed: no BIC record write"]
     D --> E0["Explore alternatives in chat"]
     E0 --> E{"Load-bearing semantic change?"}
     E -->|"No"| E0
@@ -202,7 +202,8 @@ flowchart TD
     M --> N["Exact record ID, revision, and file paths"]
 ```
 
-Arming alone writes nothing. Ordinary exploration remains in chat.
+Arming alone writes nothing. Ordinary exploration does not create a durable BIC
+record; authorized native drafts can still be written inside the project.
 
 While BIC is armed, the root controller creates a record lazily only when it
 identifies and applies the first load-bearing semantic event, such as:
@@ -220,10 +221,20 @@ supplied record; it never interprets or summarizes the conversation itself.
 Possible future compaction, agent dispatch, method changes, or Skill invocation
 are not semantic events by themselves.
 
-After each successful update, BIC reports one compact visible line containing
-the record/revision, a one-sentence semantic delta, and `valid /
-commit_pending`. The first creation also reports both exact record paths once;
-later updates do not repeat the record body unless requested or handed off.
+Every user-facing turn that actually uses BIC includes one short, truthful status,
+normally at the end. The first armed/not-armed receipt or an update receipt counts;
+progress messages do not each need another status. A continuing turn with no
+record change can say: `BIC active — no record update this turn.` Paused, ended,
+reference-only, partial, or uncertain use must report that actual state instead
+of claiming active recording. Reading an ended record does not rearm it.
+
+After a successful update, merge the status with the returned record/revision,
+a one-sentence semantic delta, and the actual validation and `commit_pending`
+state. The first creation also reports both exact record paths once; later
+updates do not repeat the record body unless requested or handed off. Showing a
+status is not a semantic event: it triggers no read, status command, write,
+validation, save, binding, repeated Skill invocation, or ending question. Reuse
+the known session state; the visible receipt does not itself prove activation.
 
 ## One result, one round
 
@@ -232,18 +243,25 @@ Codex task, topic word, or file length. Refinements of the same result keep its
 ID across tasks when writer ownership is handed off. An independent result gets
 its own ID after a qualifying semantic event; this does not end the earlier round.
 
-Before marking a round completed, the root explicitly asks whether its agreed
-questions are sufficiently answered and whether the result may be delivered and
-the round ended, then obtains the user's affirmative answer. Local approval,
-thanks, silence, a task switch, a spec, or a revision count cannot replace this
-confirmation. Discussion-only results can end without producing a spec or plan.
+When the whole agreed result reaches its applicable reviewable endpoint, the
+root explicitly asks whether its agreed questions are sufficiently answered and
+whether the result may be delivered and the round ended, then obtains the user's
+affirmative answer. A message, revision, local approval, or intermediate artifact
+does not by itself establish that endpoint. If a spec is part of the agreed result, finish that work
+before proposing completion; discussion-only results can end without a spec or
+plan. Thanks, silence, a task switch, a spec, or a revision count cannot replace
+explicit ending confirmation.
 
 An `end` update records that confirmation as a new revision and saves its original
-version in the same publication. Ending grants no successor authority. Native
-spec drafting and review may proceed while the BIC round is still open; one
+version in the same publication. Ending grants no successor authority. An open
+BIC round does not block already authorized native discussion, drafting, review,
+planning, or execution, subject to actual dependencies and permissions. One
 native approval question may also request ending confirmation when both concern
-the same complete result.
+the same complete result. If the user asks to continue or defer ending, continue
+the relevant work; do not repeat the ending question on every turn. Ask again at
+the user's requested point or after substantive progress to the complete result.
 
+An explicit pause, cancellation, or end stops the corresponding discussion work.
 Pause preserves an unfinished result; cancellation and replacement record their
 own facts, including the successor relationship for replacement. Inactivity
 implies none of them. Downstream reading or implementation does not reopen a
@@ -282,6 +300,10 @@ generating files, use its `.tmp/` for temporary work, and pass this boundary to
 authorized delegates and tools. Resolved paths must remain inside the project.
 The fixed Markdown headings, complete CLI and JSON contracts are in
 [record-format.md](plugins/brainstorming-intent-continuity/skills/brainstorming-intent-continuity/references/record-format.md).
+For an ordinary update, read its fixed Markdown and applicable CLI/JSON sections;
+consult lifecycle, parts/corrections, binding/snapshot, migration, or helper
+details only when the operation needs them. Already available exact content
+does not need another read merely because a phase changes.
 
 ## Two files, two maps
 
@@ -318,7 +340,11 @@ flowchart TD
 ```
 
 Only operative meaning belongs in `current.md`. When a decision is
-superseded, its old wording is removed from this file.
+superseded, replace its obsolete operative wording and repair any affected
+passages in the native spec during the same writing or review. Appending a new
+decision while leaving contradictory old instructions is insufficient. Routine
+execution status stays in native task state unless it changes agreed intent or
+an identified consumer needs it in the record.
 
 ### Evolution Map
 
@@ -373,12 +399,20 @@ update or reapprove a spec.
 
 ## Supplement the same native spec
 
-When BIC is armed and associated and native Brainstorming needs a spec, obtain
-and consider its corresponding current/history or saved version during that
-same native design and review. The exact version already obtained in context
-can be reused. The spec still draws on conversation, project facts, applicable
-requirements, native exploration and tradeoffs, and the BIC supplement.
-Effective user constraints keep their authority; rejected directions stay history.
+When native Brainstorming needs a spec, obtain and consider the agreed BIC input
+before forming the relevant design sections in that same native design and
+review. This includes the corresponding current/history of an armed, associated
+round or an agreed saved input from an ended round. The exact version already
+obtained in context can be reused. The spec still draws on conversation, project
+facts, applicable requirements, native exploration and tradeoffs, and the BIC
+supplement. Effective user constraints keep their authority; rejected directions
+stay history. Initial arming does not start a second exploration process.
+
+If an independent discussion ends before a later spec, pass its actual saved
+version and necessary reading instruction through the existing handoff. Reading
+that input does not reopen the discussion. A new revision that records only
+ending facts does not invalidate a semantically unchanged spec; a substantive
+requirement change calls for repair and verification of the affected scope.
 
 Express relevant requirements naturally in the native spec, with exact references
 where useful. Include the BIC pointer and reading instruction in the existing
@@ -387,11 +421,17 @@ does not express a requirement. BIC creates no second spec, required BIC heading
 extra review report, or second approval flow. Superpowers Skill files remain
 unchanged. BIC supplies input to the existing native workflow; its methods and
 approvals remain subject to current user, project and runtime authority. BIC
-adds no stages or approvals and does not require an already authorized step to
-be approved again. Native
-writing-plans consumes the same spec; every downstream reader need not reread
-the full record. Ordinary tasks without BIC continue normally, and paths that
-need no spec or plan gain none.
+adds no native stages or approval gates and does not require an already authorized
+step to be approved again; its own explicit round-ending confirmation remains.
+Native writing-plans consumes the same spec. Carry the
+accepted conditions, boundaries, necessary rationale, and observable outcomes
+into the applicable plan, delegation, and execution review; matching task names,
+feature presence, or test counts alone do not establish fidelity. Use the BIC
+supplement to resolve actual omissions without requiring every downstream reader
+to reread the full record, maintain a complete mapping, or add a BIC reviewer.
+Unaccepted ideas and rejected directions do not become implementation scope.
+Ordinary tasks without BIC continue normally, and paths that need no spec or plan
+gain none; an existing research brief or protocol keeps its native role.
 
 If an agreed input is unavailable, name the exact missing project/record/revision
 or file and recover it from its explicit original source or known exact copies.
@@ -470,6 +510,11 @@ offline old file cannot establish the absence of later corrections.
 ## Updates and conflict handling
 
 Each successful update advances the record revision.
+
+Reuse the exact project, record ID, and revision established by the last
+successful operation. Use `status` for first lookup, missing state, or a concrete
+conflict, not as a ritual before every update or visible receipt. This preserves
+the expected-revision check and the focused post-apply validation described above.
 
 The writer uses an expected-revision check. If the record has changed since it
 was read, the update fails closed so the controller must re-read the current
@@ -559,13 +604,14 @@ or inaccurate.
 
 ## Compatibility
 
-This README describes `0.2.1`. It preserves the schema 2 storage and explicit
-discussion rounds from `0.2.0`; existing schema 2 projects need no migration.
+This README includes Unreleased workflow clarifications on the prepared `0.2.1`
+candidate. It preserves the schema 2 storage and explicit discussion rounds from
+`0.2.0`; existing schema 2 projects need no migration.
 Existing full validation, its JSON receipt and complete-registry snapshot
 checks are unchanged. The new current-only validation reports its narrower
 scope and requires an exact record ID and expected revision.
 
-The behavioral candidate passed 99 mechanical tests on Python `3.9.18`.
+The prepared `0.2.1` candidate passed 99 mechanical tests on Python `3.9.18`.
 Five synthetic GPT-6 Astra instruction scenarios matched the intended rules;
 they do not establish general model improvements or performance gains.
 Local source preparation does not establish publication, update an installed

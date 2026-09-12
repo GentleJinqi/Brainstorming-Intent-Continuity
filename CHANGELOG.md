@@ -5,6 +5,30 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Show one truthful BIC status on every user-facing turn that actually uses it,
+  merging armed and update receipts. A no-update turn creates no extra read,
+  write, validation, or ending question; paused, ended, reference-only and
+  incomplete activation states remain distinct.
+- Ask for explicit whole-round ending only when the complete agreed result is
+  reviewable. Keep already authorized native work moving while BIC remains open,
+  honor explicit stops, and avoid repeating a deferred ending question each turn.
+- Consider agreed current or saved BIC input before forming relevant sections of
+  the same native spec, including inputs from ended discussions. Preserve material
+  conditions and rationale through applicable planning and execution review
+  without adding a parallel workflow, universal spec requirement, or BIC reviewer.
+- Replace superseded operative wording and repair affected native spec passages,
+  retaining useful history. Lifecycle-only revisions do not invalidate an
+  otherwise unchanged spec.
+- Scope ordinary format reading to the required sections and reuse known exact
+  state. Preserve revision-conflict checks, current-only post-apply validation,
+  full-registry snapshots and explicit migration authority. Exploration alone
+  creates no durable BIC record but does not prohibit authorized native drafts.
+
+These are unreleased instruction and documentation changes. Validation reported
+under `0.2.1` describes the earlier prepared candidate, not these changes.
+
 ## [0.2.1] - 2026-09-12
 
 ### Added

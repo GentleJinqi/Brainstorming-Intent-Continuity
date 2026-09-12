@@ -1,6 +1,6 @@
 ---
 name: brainstorming-intent-continuity
-description: Use when explicitly starting or restarting a root Superpowers Brainstorming session whose approved decisions must survive compaction, handoffs, specs, plans, or fidelity review; do not use for ordinary Brainstorming alone, quoted or negated invocations, pasted documentation, or prompt-text auto-detection.
+description: Use when explicitly starting or restarting a root Superpowers Brainstorming session with BIC to preserve approved intent across context changes and handoffs.
 ---
 
 # Brainstorming Intent Continuity
@@ -55,11 +55,31 @@ fenced/pasted documentation, or a prompt-string match.
 On a repeat within the same root discussion, resume its armed candidate or
 exact record and say so; never create a second one because of the repeat.
 
+## Show the actual state once per user turn
+
+Every user-facing turn that uses the armed session or its BIC input includes
+one brief, truthful status in the user's language, normally at the end. The
+initial armed/not-armed receipt or a successful update receipt satisfies this;
+merge receipts instead of repeating them in each progress message. Continued
+use in the same discussion does not require another Skill invocation.
+
+With no record change, say `BIC is in use — no record update this turn.` Before
+the first semantic event, make clear that no project record exists. After a
+pause, cancellation, or ending, name that actual state; downstream use may say
+`BIC reference in use — confirmed round remains ended.` Reading a confirmed
+version does not reactivate it. If activation or state cannot be established,
+say so; merely discussing or inspecting BIC is not active use.
+
+Use valid state already in context. The visible receipt is not a semantic
+event and triggers no status/read/apply/validate/save/bind call, file creation,
+or ending question. Recover genuinely missing state under the existing exact
+input rules; do not perform mechanical work just to print the receipt.
+
 ## Separate the three semantic layers
 
 | Layer | Rule |
 | --- | --- |
-| Exploration | Alternatives, drafts, and repeated wording stay in chat; no project write. |
+| Exploration | Alternatives, drafts, and repeated wording do not create durable BIC state. Authorized native drafts may be written inside the consuming project. |
 | Controller semantic delta | The root identifies a load-bearing proposed change and obtains user authority where needed. Subagents are read-only unless separately granted a disjoint write. |
 | Durable BIC authority | After a qualifying event, the root writes current/history and passes their exact pointer onward. |
 
@@ -78,29 +98,38 @@ writer handoff. Use a new ID for an independent result; it does not imply that
 the earlier round completed, was cancelled, or ended. Resolve identity from the
 agreed result; ask once only if ambiguity materially changes outcome or ownership.
 
-When the whole agreed result is ready for review, explicitly ask:
+When the whole agreed result reaches its applicable review point, explicitly
+ask. A required written spec is part of that result; local agreement or an
+intermediate artifact is insufficient:
 
 > Have the questions agreed for this round been sufficiently answered? Do you
 > confirm that these results can be delivered and this Brainstorming/BIC round ended?
 
-Use the user's language; no fixed wording is required. Wait for an affirmative
-answer explicitly addressing the whole round's ending. Local design approval,
+Use the user's language; no fixed wording is required. Close only after an
+affirmative answer explicitly addressing the whole round's ending. Local design approval,
 thanks, praise, silence, a Task switch, a high revision number, a spec, or an
 assistant final is not that confirmation. This applies to discussion-only
 results too; a spec or plan is not required to end. Material questions need
 answers or an explicit disposition compatible with the accepted result, not a
-new checklist or review process.
+new checklist or review process. If the user continues the discussion or
+defers ending, continue the agreed work and ask again at the user's stated
+point or after substantive progress brings the whole result to review; do not
+repeat the same ending question every turn.
 
 If a native approval already covers the same complete result, one question may
 explicitly request both that approval and the round-ending confirmation. Do not
 expand a local approval into whole-round confirmation. Ending grants no
 implementation, publication, or other successor authority and replaces no
-native approval. Native spec drafting and review may proceed before BIC ends.
+native approval. Keeping BIC open does not block independently authorized
+native discussion, drafting, review, planning, or execution; their actual
+dependencies and permissions still apply. An explicit pause, cancellation, or
+stop ends the corresponding work as instructed.
 
 Submit the user's ending confirmation as a semantic revision with the
-`round.action=end` update. The writer publishes that revision together with
-its saved original version. Stop adding ordinary implementation logs to the
-ended round.
+`round.action=end` update described in
+[lifecycle updates](references/record-format.md#lifecycle-updates-and-preservation).
+The writer publishes that revision together with its saved original version.
+Stop adding ordinary implementation logs to the ended round.
 
 | Situation | Record behavior |
 | --- | --- |
@@ -117,15 +146,22 @@ ended round.
 
 Text is authority. `current.md` holds effective goals, constraints, necessary
 reasons, and material open questions. `history.md` holds useful rejected or
-superseded directions and key turns. Remove superseded requirements from
-current; do not write exploratory drafts as approved decisions or accumulate
-reply transcripts, implementation steps, or evidence logs.
+superseded directions and key turns. Replace stale operative text when meaning
+changes; appending a new rule while leaving its contradictory predecessor is
+not a repair. Keep useful old reasons in history, and repair affected sections
+of the same native spec during its writing or review. Do not write exploratory
+drafts as approved decisions or accumulate reply transcripts, implementation
+steps, or evidence logs. Ordinary execution state belongs to native task state
+unless it changes agreed intent or an identified consumer needs it here.
 
-Before authoring record drafts, read
-[`references/record-format.md`](references/record-format.md) for the fixed
-headings, Mermaid, layout, update, and schema contract. Mermaid projects useful
-current relations or key turns; it is not authority and does not gain a node
-for each revision. Do not remove effective text merely to shorten a diagram.
+Before authoring ordinary record drafts, use the
+[fixed Markdown contract](references/record-format.md#fixed-markdown-contract)
+and relevant [CLI/JSON contract](references/record-format.md#cli-and-json).
+Read advanced sections only for the operation at hand, following the
+[reference guide](references/record-format.md#read-for-the-current-operation);
+reuse applicable content already in context. Mermaid projects useful current
+relations or key turns; it is not authority and does not gain a node for each
+revision. Do not remove effective text merely to shorten a diagram.
 
 Apply these placement rules literally:
 
@@ -161,6 +197,8 @@ separate storage growth from meaning and round status:
   with an old event; old text is not current authority. An offline old file
   cannot establish that no later correction exists.
 
+For grouping or correcting material, read
+[parts, navigation, and corrections](references/record-format.md#parts-navigation-and-corrections).
 The root supplies semantic grouping and corrections. The mechanical writer
 manages paths, dependencies, and reference consistency; do not hand-build
 archive or saved-version paths.
@@ -183,9 +221,12 @@ BIC_SKILL_DIR="$(cd "$(dirname "$BIC_SKILL_MD")" && pwd -P)"
 test -f "${BIC_SKILL_DIR}/SKILL.md"
 ```
 
-Inspect the enrolled project with `status --project PROJECT` before a write.
-The root authors current/history drafts and any structured update draft inside
-the project, then calls `apply` with the exact expected revision. Use
+Use `status --project PROJECT` for first record location, missing state, or a
+concrete conflict. Reuse the exact project, ID, and revision established by a
+recent successful operation when that state remains valid; a new write does
+not itself require another status call. The root authors current/history drafts
+and any structured update draft inside the project, then calls `apply` with
+the exact expected revision. Use
 `--update-draft PROJECT/.tmp/update.json` for the structured update described in
 record-format. For a new round omit `--record-id` and use expected revision 0;
 for an update provide the stable ID and current revision. After apply, validate
@@ -230,7 +271,9 @@ BIC updated — BIC-0007 rev 3 | Delta: <only the semantic change> | validation:
 On creation, add the returned current/history paths once. Later, repeat paths
 only on request or for handoff. Binding saves the expected current revision
 and records its exact project, session, ID, revision, and saved paths inside the
-project's registry. Setting a binding after current advances returns
+project's registry; consult
+[binding and snapshots](references/record-format.md#project-local-binding-and-full-registry-snapshots)
+when performing either operation. Setting a binding after current advances returns
 `revision_conflict`; an existing binding or `read --revision N` can still resolve
 the old saved version. Lookup is read-only, is not arming, and grants no write
 ownership. A missing binding can be replaced by a complete explicit pointer,
@@ -238,9 +281,11 @@ never by guessing another record. Old `--plugin-data` calls return
 `binding_migration_required` and leave the old external file unchanged.
 
 Unsupported schema or unverified compatibility is read-only
-`compatibility_hold`, not silent migration. Use project-scoped `migrate` only
-within actual migration authority. Preserve legacy meaning and unknown ending
-status; never infer an ending confirmation from an old spec, final, commit, or
+`compatibility_hold`, not silent migration. For migration, read the schema
+contract in [project layout](references/record-format.md#project-layout-and-publication)
+and use project-scoped `migrate` only within actual migration authority.
+Preserve legacy meaning and unknown ending status; never infer an ending
+confirmation from an old spec, final, commit, or
 release. Do not renumber old records, invent unsaved revisions, traverse other
 projects, or modify old external binding state.
 
@@ -260,6 +305,10 @@ reading in the same context do not trigger copies. A pre-ending saved version
 remains explicitly unfinished; the later `end` update records and saves a new
 revision containing the user's ending confirmation.
 
+If this revision adds only the ending fact, it does not invalidate a spec whose
+substantive input is unchanged. Revise affected design and evidence when
+requirements change, not merely because the BIC revision number advances.
+
 Use `save-version` to preserve the original current/history bodies, identity,
 and their necessary topic/archive dependencies. Do not replace them with a new
 handoff summary or a second design. Use returned paths rather than mutable
@@ -271,24 +320,29 @@ For dependent handoff, first complete apply successfully and capture the
 returned project, ID, revision, and paths. Save that revision when the handoff
 needs a durable reference, then pass its actual saved paths. A draft,
 placeholder, or guessed version path is never a handoff pointer. State whether
-the pointer requests current effective content or a particular saved version.
+the pointer requests current effective content or a particular saved version,
+and what material the recipient needs to read. This applies when an independent
+discussion ends before a later native spec is written.
 
 ## Supply the same native design with real BIC input
 
-When BIC is armed and associated and the native workflow needs a spec, provide
-and actually consider the corresponding current/history or saved-version
-content during that same native exploration, organization, and review. Exact
-content already acquired in the current context need not be read again. Read
-ordinary two-file records normally; for long records use the effective-topic
+Use BIC where the current question calls for accepted constraints, reasons, or
+rejected directions; arming does not start another exploration. When the native
+workflow needs a spec and a BIC result is associated, including an ended one,
+acquire and actually consider its current/history or saved-version content
+before forming the relevant design sections. Exact content already acquired
+in the current context need not be read again. Read ordinary two-file records
+normally; for long records use the effective-topic
 entry and concrete history questions described above. Do not skip the agreed
 BIC input because the visible conversation seems sufficient.
 
 The spec combines current conversation, project facts, applicable requirements,
 native design analysis, and the actual BIC supplement. Effective user
 constraints retain their authority; rejected and withdrawn directions retain
-historical status. Put relevant requirements naturally in the spec's own
-sections, with exact source references where useful. A link alone does not
-express a requirement, and BIC headings do not dictate the spec's structure.
+historical status. Put relevant requirements, concrete conditions, boundaries,
+necessary reasons, and observable results naturally in the spec's own sections,
+with exact source references where useful. A final link alone does not express
+a requirement, and BIC headings do not dictate the spec's structure.
 
 When the native review passes materials to another reader, include the exact
 BIC pointer and reading instruction in that existing handoff. Repair actual
@@ -296,11 +350,14 @@ omissions or distortions in the same spec. Do not create a parallel BIC spec,
 BIC review report, or second approval flow. Do not modify native Skill files.
 Supply BIC input to the existing native workflow; its methods and approvals
 remain subject to current user, project, and runtime authority. BIC adds no
-stages or approvals and does not require an already authorized step to be
-approved again. Native writing-plans consumes the same spec; do not require
-every plan to reread the whole BIC record. Native paths that need no spec or
-plan gain none from BIC;
-tasks without BIC continue normally.
+native stages or approval gates and does not require an already authorized step to be
+approved again. Native plans, delegation, and applicable review carry forward
+the accepted meaning through the same spec and relevant input. Matching task
+names, present features, or test counts alone do not establish fidelity to its
+conditions. Use BIC to resolve actual omissions without mandatory full-record
+rereads, exhaustive mappings, or an extra BIC reviewer. Native paths that need
+no spec or plan gain none from BIC; existing briefs, protocols, and explicit
+user paths keep their own authority. Tasks without BIC continue normally.
 
 Update the BIC record before dependent work when authorized user meaning
 changes. Implementation details remain controller rulings. When fidelity

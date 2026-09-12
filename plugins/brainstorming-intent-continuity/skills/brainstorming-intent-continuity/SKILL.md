@@ -157,6 +157,8 @@ unless it changes agreed intent or an identified consumer needs it here.
 Before authoring ordinary record drafts, use the
 [fixed Markdown contract](references/record-format.md#fixed-markdown-contract)
 and relevant [CLI/JSON contract](references/record-format.md#cli-and-json).
+Retrieve the bodies of those sections, locating their heading boundaries as
+needed; a section link does not request the whole reference file.
 Read advanced sections only for the operation at hand, following the
 [reference guide](references/record-format.md#read-for-the-current-operation);
 reuse applicable content already in context. Mermaid projects useful current

@@ -480,7 +480,7 @@ being migrated silently.
 
 ### Explicit schema 1 migration
 
-The `0.2.0` writer reads and validates schema 1 without changing it. Before
+The `0.2.1` writer reads and validates schema 1 without changing it. Before
 writing that project's old records, obtain project migration authority and run
 this command using the same runtime helper/project setup above:
 
@@ -559,11 +559,18 @@ or inaccurate.
 
 ## Compatibility
 
-This README describes `0.2.0`, including schema 2 and explicit discussion rounds.
-Local source preparation does not establish publication or update an installed
-plugin. The candidate passed 84 mechanical tests on Python `3.9.18`; actual
-model testing used Codex CLI/App Server `0.153.4` with `gpt-6-astra` at `ultra`.
-The observations and their limits are recorded in the changelog.
+This README describes `0.2.1`. It preserves the schema 2 storage and explicit
+discussion rounds from `0.2.0`; existing schema 2 projects need no migration.
+Existing full validation, its JSON receipt and complete-registry snapshot
+checks are unchanged. The new current-only validation reports its narrower
+scope and requires an exact record ID and expected revision.
+
+The behavioral candidate passed 99 mechanical tests on Python `3.9.18`.
+Five synthetic GPT-6 Astra instruction scenarios matched the intended rules;
+they do not establish general model improvements or performance gains.
+Local source preparation does not establish publication, update an installed
+plugin or verify structural Skill loading in a new task after installation.
+Validation observations and their limits are recorded in the changelog.
 
 For historical compatibility, release `0.1.4` was verified on Linux with
 Superpowers `6.3.0` and Codex CLI `0.149.1`. The deterministic writer requires

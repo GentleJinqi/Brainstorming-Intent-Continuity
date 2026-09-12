@@ -406,7 +406,7 @@ closed，controller 必须重新读取当前权威；它不会静默覆盖更新
 
 ### 显式迁移 schema 1
 
-`0.2.0` writer 可以只读查看和验证 schema 1。写入该项目旧记录前，应取得该项目的迁移
+`0.2.1` writer 可以只读查看和验证 schema 1。写入该项目旧记录前，应取得该项目的迁移
 权限，再使用上面的运行时 helper/项目变量执行：
 
 ```bash
@@ -469,9 +469,13 @@ Markdown 权威。
 
 ## 兼容性
 
-本 README 描述 `0.2.0`，包括 schema 2 与显式讨论轮次。本地源码准备不代表已经发布，
-也不会更新已安装插件。候选在 Python `3.9.18` 上通过了 84 项机械测试；实际模型测试使用
-Codex CLI/App Server `0.153.4` 与 `gpt-6-astra` 的 `ultra` 档位。观察结果及其限制记录于
+本 README 描述 `0.2.1`，保留 `0.2.0` 的 schema 2 存储与显式讨论轮次；已有 schema 2
+项目无需迁移。原有完整 validate、其 JSON 回执及完整 registry snapshot 检查保持不变。
+新增的 current-only 验证明确报告较窄范围，并要求准确的 record ID 与 expected revision。
+
+行为候选在 Python `3.9.18` 上通过了 99 项机械测试。五个合成 GPT-6 Astra 指令场景符合
+预期规则，但不能证明普遍模型行为改善或性能提升。本地源码准备不代表已经发布，不会更新
+已安装插件，也不能验证安装后新任务中的结构化 Skill 加载。验证观察及其限制记录于
 changelog。
 
 历史兼容性方面，发布版 `0.1.4` 曾在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI

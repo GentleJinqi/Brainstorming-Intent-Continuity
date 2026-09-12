@@ -5,6 +5,8 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-12
+
 ### Added
 
 - Focused post-apply validation with `--current-only`, an explicit record ID and
@@ -19,6 +21,28 @@ The project follows [Semantic Versioning](https://semver.org/).
   and controlled-bootstrap confirmation remain required.
 - Clarify that BIC supplies input to the existing native workflow under current
   user, project and runtime authority, without adding stages or repeat approvals.
+
+### Compatibility
+
+- Preserve the schema 2 storage and existing command interfaces from `0.2.0`.
+  Existing schema 2 projects need no migration. Schema 1 remains read-only until
+  an explicitly authorized project migration; plugin upgrades do not migrate
+  project records.
+- Existing full validation, its JSON receipt and complete-registry snapshot
+  checks remain unchanged. Current-only validation requires an explicit record
+  ID and expected revision and reports only its checked scope.
+
+### Validation
+
+- The behavioral candidate passed 99 mechanical tests on Python `3.9.18`,
+  including 15 new validation-scope tests. Skill and plugin validation passed.
+- Five synthetic GPT-6 Astra instruction scenarios matched the intended rules.
+  The previous version already followed current higher-priority rules in the
+  shared baseline scenarios; wording changes clarify ambiguity and do not
+  establish general behavior improvements, latency reductions or statistical
+  advantages.
+- These checks do not establish structural Skill loading in a real new task
+  after installing this release.
 
 
 ## [0.2.0] - 2026-09-06
@@ -129,7 +153,8 @@ The project follows [Semantic Versioning](https://semver.org/).
   review.
 - A GitHub repository marketplace package and 19 deterministic writer tests.
 
-[Unreleased]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/compare/v0.1.2...v0.1.3

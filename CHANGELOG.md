@@ -21,6 +21,9 @@ The project follows [Semantic Versioning](https://semver.org/).
 - Replace superseded operative wording and repair affected native spec passages,
   retaining useful history. Lifecycle-only revisions do not invalidate an
   otherwise unchanged spec.
+- Preserve the agreed scope and evidence standard when carrying intent into a
+  native spec, including accepted approximations and limits. Stronger guarantees
+  and merely possible concerns do not become new completion conditions.
 - Scope ordinary format reading to the required sections and reuse known exact
   state. Preserve revision-conflict checks, current-only post-apply validation,
   full-registry snapshots and explicit migration authority. Exploration alone

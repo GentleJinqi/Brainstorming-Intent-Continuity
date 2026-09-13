@@ -343,9 +343,12 @@ entry and concrete history questions described above. Do not skip the agreed
 BIC input because the visible conversation seems sufficient.
 
 The spec combines current conversation, project facts, applicable requirements,
-native design analysis, and the actual BIC supplement. Effective user
-constraints retain their authority; rejected and withdrawn directions retain
-historical status. Put relevant requirements, concrete conditions, boundaries,
+native design analysis, and the actual BIC supplement. Carry each accepted
+constraint with its agreed scope, evidence standard, approximations and limits.
+A stronger guarantee or a merely possible concern is not a new completion
+condition; reopening an accepted choice needs a concrete conflict, defect, or
+changed requirement. Rejected and withdrawn directions retain historical
+status. Put relevant requirements, concrete conditions, boundaries,
 necessary reasons, and observable results naturally in the spec's own sections,
 with exact source references where useful. A final link alone does not express
 a requirement, and BIC headings do not dictate the spec's structure.

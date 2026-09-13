@@ -143,16 +143,21 @@ $brainstorming-intent-continuity:brainstorming-intent-continuity
 Codex 会把插件提供的 Skill 命名为 `plugin-name:skill-name`。本插件的插件名和
 Skill 名都是 `brainstorming-intent-continuity`，因此这里的重复是有意的。
 
-预期确认信息为：
+两个 Skill 均已结构化加载、且激活回合未处理语义事件时，确认信息为：
 
 ```text
 BIC armed — explicit session mode; no project record exists until a semantic event.
 ```
 
-只有 Codex 已经结构化加载了两个 Skill，这条回执才成立。如果 Codex 已加载 BIC、但遗漏了
-Superpowers Brainstorming，BIC 会 fail closed，并要求您在下一 turn 单独调用
-`$superpowers:brainstorming`。如果完全没有出现 BIC 回执，则在下一 turn 单独调用插件限定名
-BIC Skill。这两种重试都不会创建项目状态；依赖激活的工作只有在出现 armed 回执后才继续。
+如果激活回合还处理了语义事件，应按已有权限处理，在结尾给出一份如实合并的激活/更新
+回执，反映实际结果与记录状态。不要先单独给出 armed 回执，也不要在记录已经创建后仍使用
+“尚无记录”的措辞。
+
+如果 Codex 已加载 BIC、但遗漏了 Superpowers Brainstorming，BIC 会 fail closed，并要求您
+在下一 turn 单独调用 `$superpowers:brainstorming`。如果 BIC 本身未结构化加载，则在下一
+turn 单独调用插件限定名 BIC Skill。仅加载 Skill 不创建项目状态。两个 Skill 已实际结构化
+加载且已有权限允许时，依赖激活的工作即可继续；可见回执只报告状态，本身不建立激活事实，
+也不是继续工作的前置条件。
 
 partial activation 只暂停依赖激活的 Brainstorming/BIC 工作，不吸收该阶段的语义内容；
 同一 turn 中不依赖激活的已授权工作可以继续。缺失的 Skill 加载成功后，

@@ -160,18 +160,25 @@ Codex namespaces a plugin-contributed Skill as `plugin-name:skill-name`. In
 this package, both names are `brainstorming-intent-continuity`, so the repeated
 name is intentional.
 
-The expected acknowledgement is:
+When both Skills are structurally loaded and the activation turn handles no
+semantic event, the acknowledgement is:
 
 ```text
 BIC armed — explicit session mode; no project record exists until a semantic event.
 ```
 
-That receipt is valid only when Codex has structurally loaded both Skills. If
-Codex loads BIC but omits Superpowers Brainstorming, BIC fails closed and asks
-you to invoke `$superpowers:brainstorming` in the next turn. If no BIC receipt
-appears, invoke the plugin-qualified BIC Skill in the next turn. Neither retry
-creates project state; resume activation-dependent work only after the armed
-receipt appears.
+If the activation turn also handles a semantic event, process it under the
+existing authority and give one truthful combined activation/update receipt at
+the end, reflecting the actual outcome and record state. Do not first emit a
+separate armed receipt or use no-record wording after a record has been created.
+
+If Codex loads BIC but omits Superpowers Brainstorming, BIC fails closed and asks
+you to invoke `$superpowers:brainstorming` in the next turn. If BIC itself was
+not structurally loaded, invoke the plugin-qualified BIC Skill in the next turn.
+Skill loading alone creates no project state. Activation-dependent work can
+continue when both Skills are actually structurally loaded and existing
+authority permits it; the visible receipt reports that state, does not establish
+activation, and is not a prerequisite for continuing the work.
 
 A partial activation pauses dependent Brainstorming/BIC work and leaves its
 semantic content unrecorded. Independent authorized work can continue in the

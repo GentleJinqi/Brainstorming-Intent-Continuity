@@ -58,7 +58,7 @@ class PublicCommandExamplesTestCase(unittest.TestCase):
     def test_bilingual_migration_and_saved_input_examples_preserve_originals(self):
         # A stale flag, wrong revision, or mutable pointer in a published example
         # must fail against actual project-local storage, not a prose assertion.
-        base = REPOSITORY_ROOT / ".tmp"
+        base = Path(os.environ.get("TMPDIR", REPOSITORY_ROOT / ".tmp"))
         base.mkdir(exist_ok=True)
         for name in ("README.md", "README.zh-CN.md"):
             with self.subTest(document=name), tempfile.TemporaryDirectory(dir=base) as folder:
@@ -149,13 +149,13 @@ class PublicPackageContractTestCase(unittest.TestCase):
             normalized_chinese,
         )
 
-    def test_v021_release_metadata_and_documentation_links(self):
+    def test_v022_release_metadata_and_documentation_links(self):
         manifest = json.loads(
             (PLUGIN_ROOT / ".codex-plugin" / "plugin.json").read_text(
                 encoding="utf-8"
             )
         )
-        self.assertEqual(manifest["version"], "0.2.1")
+        self.assertEqual(manifest["version"], "0.2.2")
         marketplace = json.loads(
             (REPOSITORY_ROOT / ".agents" / "plugins" / "marketplace.json")
             .read_text(encoding="utf-8")
@@ -173,7 +173,10 @@ class PublicPackageContractTestCase(unittest.TestCase):
         )
 
         changelog = (REPOSITORY_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-        self.assertIn("## [0.2.1] - 2026-09-12", changelog)
+        self.assertIn("## [0.2.2] - 2026-09-13", changelog)
+        self.assertIn("## [0.2.1] - 2026-09-12 (unpublished preparation", changelog)
+        self.assertIn("compare/v0.2.0...v0.2.2", changelog)
+        self.assertNotIn("compare/v0.2.0...v0.2.1", changelog)
         self.assertIn("## [0.2.0] - 2026-09-06", changelog)
         self.assertIn("## [0.1.4] - 2026-08-26", changelog)
         changelog_lower = changelog.lower()
@@ -183,7 +186,7 @@ class PublicPackageContractTestCase(unittest.TestCase):
         for relative_path in ("README.md", "README.zh-CN.md"):
             with self.subTest(path=relative_path):
                 text = (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8")
-                self.assertIn("0.2.1", text)
+                self.assertIn("0.2.2", text)
                 self.assertIn("[CHANGELOG.md](CHANGELOG.md)", text)
                 self.assertIn(
                     "https://github.com/GentleJinqi/Brainstorming-Intent-Continuity/releases",

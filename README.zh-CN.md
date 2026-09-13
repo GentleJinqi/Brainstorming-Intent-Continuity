@@ -88,7 +88,23 @@ codex plugin remove brainstorming-intent-continuity@gentlejinqi-bic
 
 ### 更新已有安装
 
-BIC 发布新版本后，先刷新已经配置的 marketplace：
+`0.2.2` 包含自稳定版 `0.2.0` 以来的全部变化。`0.2.1` 是未发布的准备版本，无需先安装
+一个单独的 `0.2.1` 发布版。本次累计变化包括：
+
+- 实际使用 BIC 的回合给出一次真实状态，合并激活与更新回执，不为显示状态额外执行操作；
+- 按当前操作读取所需参考章节、复用有效的准确状态，并在 apply 后使用 `--current-only`
+  定向验证；
+- 将已约定的当前或保存版意图承接到同一原生 spec 及适用的计划和审查，保留范围、证据
+  标准、已接受的近似与限制，不另加完成条件；
+- 替换已失效的现行表述，在完整约定结果可供审阅时请求明确结束确认，同时尊重独立工作
+  和明确停止指令；
+- 部分激活时暂停依赖激活的工作、继续独立获授权的工作，保留结构化加载和 forward-only
+  恢复边界。
+
+已有 schema 2 项目无需迁移；schema 1 写入仍需该项目明确授权迁移。插件更新不会迁移
+记录。完整变化与限制见 [CHANGELOG.md](CHANGELOG.md)。
+
+本版发布后，先刷新已经配置的 marketplace：
 
 ```bash
 codex plugin marketplace upgrade gentlejinqi-bic
@@ -105,8 +121,11 @@ codex plugin add brainstorming-intent-continuity@gentlejinqi-bic
 检查已安装版本：
 
 ```bash
-codex plugin list
+codex plugin list --marketplace gentlejinqi-bic --json
 ```
+
+确认 `brainstorming-intent-continuity@gentlejinqi-bic` 已安装、已启用且版本为 `0.2.2`。
+若显示其他版本，则尚未验证更新成功。
 
 更新后请新建一个 Codex 任务，使已发布的 Skill 加载到新任务上下文。
 更新插件不会删除项目自有的 `.brainstorming-intent/` 记录。
@@ -438,7 +457,7 @@ closed，controller 必须重新读取当前权威；它不会静默覆盖更新
 
 ### 显式迁移 schema 1
 
-`0.2.1` writer 可以只读查看和验证 schema 1。写入该项目旧记录前，应取得该项目的迁移
+`0.2.2` writer 可以只读查看和验证 schema 1。写入该项目旧记录前，应取得该项目的迁移
 权限，再使用上面的运行时 helper/项目变量执行：
 
 ```bash
@@ -501,15 +520,16 @@ Markdown 权威。
 
 ## 兼容性
 
-本 README 包含在已准备的 `0.2.1` 候选之上尚未发布的流程澄清，保留 `0.2.0` 的 schema 2
-存储与显式讨论轮次；已有 schema 2 项目无需迁移。原有完整 validate、其 JSON 回执及完整
-registry snapshot 检查保持不变。
-新增的 current-only 验证明确报告较窄范围，并要求准确的 record ID 与 expected revision。
+`0.2.2` 保留 `0.2.0` 的 schema 2 存储与显式讨论轮次；已有 schema 2 项目无需迁移。
+原有完整 validate、其 JSON 回执及完整 registry snapshot 检查保持不变。current-only
+验证要求准确的 record ID 与 expected revision，检查 manifest 元数据和所选当前记录的
+依赖（包括 correction parts），不审计无关记录正文或旧保存视图。
 
-此前已准备的 `0.2.1` 候选在 Python `3.9.18` 上通过了 99 项机械测试。五个合成 GPT-6 Astra
-指令场景符合预期规则，但不能证明普遍模型行为改善或性能提升。本地源码准备不代表已经发布，不会更新
-已安装插件，也不能验证安装后新任务中的结构化 Skill 加载。验证观察及其限制记录于
-changelog。
+此前准备已通过 99 项机械测试（29 项 CLI、46 项 schema 2、9 项包检查和 15 项验证范围
+测试）。这些是自动化检查，不是 99 场模型对话，也不作为 `0.2.2` 完整套件新一轮执行的
+结果。本版本地检查覆盖版本元数据、公开包契约与文档一致性，不能证明普遍思考质量或
+净效率提升。安装及结构化 Skill 加载需在更新后的新任务中验收，本地源码准备本身不证明
+这两项已经完成。验证范围记录于 changelog。
 
 历史兼容性方面，发布版 `0.1.4` 曾在 Linux 环境中使用 Superpowers `6.3.0` 与 Codex CLI
 `0.149.1` 完成验证。确定性 writer 需要 Python `3.9+` 和 POSIX 文件锁。当前不支持原生

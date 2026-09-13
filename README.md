@@ -97,7 +97,28 @@ already belong to your projects.
 
 ### Upgrade an existing installation
 
-After a new BIC release, refresh the configured marketplace first:
+Version `0.2.2` includes all changes since stable `0.2.0`. Version `0.2.1`
+was an unpublished preparation version; there is no separate `0.2.1` release
+to install first. The cumulative changes are:
+
+- one truthful status on each turn using BIC, with activation and update
+  receipts combined and no extra operation solely to display that status;
+- reading only the reference sections needed for the operation and reusing
+  valid exact state, with focused post-apply `--current-only` validation;
+- carrying agreed current or saved intent into the same native spec and its
+  applicable planning and review, preserving scope, evidence standards,
+  accepted approximations and limits without adding completion conditions;
+- replacing superseded operative wording, and asking for explicit ending
+  confirmation when the complete agreed result is reviewable while respecting
+  independent work and explicit stops;
+- pausing dependent work on partial activation while independent authorized
+  work continues, with structural loading and forward-only recovery boundaries.
+
+Existing schema 2 projects need no migration. Schema 1 writes still require
+explicit project migration authority; upgrading the plugin does not migrate
+records. See [CHANGELOG.md](CHANGELOG.md) for the complete changes and limits.
+
+After the release is published, refresh the configured marketplace first:
 
 ```bash
 codex plugin marketplace upgrade gentlejinqi-bic
@@ -114,8 +135,12 @@ codex plugin add brainstorming-intent-continuity@gentlejinqi-bic
 Verify the installed version:
 
 ```bash
-codex plugin list
+codex plugin list --marketplace gentlejinqi-bic --json
 ```
+
+Confirm that `brainstorming-intent-continuity@gentlejinqi-bic` is installed,
+enabled, and reports version `0.2.2`. If it reports another version, the upgrade
+is not yet verified.
 
 Start a new Codex task after upgrading so the released Skill is loaded into
 the new task context. Updating the plugin does not delete project-owned
@@ -525,7 +550,7 @@ being migrated silently.
 
 ### Explicit schema 1 migration
 
-The `0.2.1` writer reads and validates schema 1 without changing it. Before
+The `0.2.2` writer reads and validates schema 1 without changing it. Before
 writing that project's old records, obtain project migration authority and run
 this command using the same runtime helper/project setup above:
 
@@ -604,19 +629,22 @@ or inaccurate.
 
 ## Compatibility
 
-This README includes Unreleased workflow clarifications on the prepared `0.2.1`
-candidate. It preserves the schema 2 storage and explicit discussion rounds from
-`0.2.0`; existing schema 2 projects need no migration.
-Existing full validation, its JSON receipt and complete-registry snapshot
-checks are unchanged. The new current-only validation reports its narrower
-scope and requires an exact record ID and expected revision.
+Version `0.2.2` preserves the schema 2 storage and explicit discussion rounds
+from `0.2.0`; existing schema 2 projects need no migration. Existing full
+validation, its JSON receipt and complete-registry snapshot checks are
+unchanged. Current-only validation requires an exact record ID and expected
+revision; it checks manifest metadata and the selected current dependencies,
+including correction parts, without auditing unrelated record bodies or old
+saved views.
 
-The prepared `0.2.1` candidate passed 99 mechanical tests on Python `3.9.18`.
-Five synthetic GPT-6 Astra instruction scenarios matched the intended rules;
-they do not establish general model improvements or performance gains.
-Local source preparation does not establish publication, update an installed
-plugin or verify structural Skill loading in a new task after installation.
-Validation observations and their limits are recorded in the changelog.
+The earlier preparation passed 99 mechanical tests (29 CLI, 46 schema 2,
+9 package and 15 validation-scope tests). These are automated checks, not 99
+model conversations, and are not presented as a new run of the complete suite
+for `0.2.2`. This release's local checks cover version metadata, public package
+contracts and documentation consistency. They do not establish general
+thinking-quality or net-efficiency gains. Installation and structural Skill
+loading must be checked in a new task after upgrading; local source preparation
+alone does not establish either. Validation scope is recorded in the changelog.
 
 For historical compatibility, release `0.1.4` was verified on Linux with
 Superpowers `6.3.0` and Codex CLI `0.149.1`. The deterministic writer requires
